@@ -8,11 +8,19 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "redteam": "tsx redteam/run.ts",
-    "demo:spine": "tsx --env-file=.env src/demo/spine.ts"
+    "demo:spine": "tsx --env-file=.env src/demo/spine.ts",
+    "mint": "tsx --env-file=.env src/cli/mint-mandate.ts",
+    "mcp": "tsx --env-file=.env src/mcp/server.ts",
+    "demo:mcp": "tsx --env-file=.env src/demo/mcp-client.ts",
+    "audit:verify": "tsx --env-file=.env src/cli/verify-audit.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "zod": "^4.6.5"
   }
 }
