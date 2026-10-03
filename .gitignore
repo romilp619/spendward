@@ -6,3 +6,5 @@ dist/
 *.log
 .DS_Store
 audit.db
+redteam-audit.jsonl
+redteam-catalog.json

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 /**
  * Demo catalog. One honest listing, one carrying an indirect prompt injection.
  *
@@ -46,9 +48,18 @@ export const CATALOG: Product[] = [
   },
 ];
 
+/** The runner swaps this per attack so each is measured in isolation. */
+function activeCatalog(): Product[] {
+  const path = process.env.PAYGUARD_CATALOG;
+  if (!path) return CATALOG;
+  return JSON.parse(readFileSync(path, "utf8")) as Product[];
+}
+
 export function search(query: string): Product[] {
   const q = query.toLowerCase();
-  return CATALOG.filter(
+  const catalog = activeCatalog();
+  if (process.env.PAYGUARD_CATALOG) return catalog;
+  return catalog.filter(
     (p) =>
       p.name.toLowerCase().includes(q) ||
       p.category.toLowerCase().includes(q) ||
