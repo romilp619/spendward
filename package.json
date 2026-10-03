@@ -18,7 +18,8 @@
     "reset": "./scripts/reset.sh",
     "demo": "./scripts/reset.sh && npm run demo:agent",
     "demo:agent": "tsx --env-file=.env src/demo/agent-demo.ts",
-    "demo:scripted": "./scripts/reset.sh && npm run demo:mcp"
+    "demo:scripted": "./scripts/reset.sh && npm run demo:mcp",
+    "tunnel": "./scripts/tunnel.sh"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
