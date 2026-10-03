@@ -14,6 +14,15 @@ import { createOrder, captureOrder, getAccessToken } from "../lib/paypal.js";
 import type { SignedMandate } from "../lib/mandate.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Where PayPal sends the buyer back to. Baked into the order at creation time,
+ * so it must outlive the request that created it -- a server on a different
+ * port, or behind a tunnel, would otherwise strand the buyer on a dead URL.
+ */
+function publicOrigin(requestUrl: string): string {
+  return process.env.PUBLIC_URL ?? new URL(requestUrl).origin;
+}
 const app = new Hono();
 
 function mandate(): SignedMandate | null {
@@ -48,8 +57,8 @@ app.post("/api/approvals/:id/approve", async (c) => {
     amount: pending.request.amount,
     currency: pending.request.currency,
     description: `${pending.request.merchant} - ${pending.request.category}`,
-    returnUrl: `${new URL(c.req.url).origin}/paypal/return`,
-    cancelUrl: `${new URL(c.req.url).origin}/paypal/cancel`,
+    returnUrl: `${publicOrigin(c.req.url)}/paypal/return`,
+    cancelUrl: `${publicOrigin(c.req.url)}/paypal/cancel`,
   });
 
   // The approval is itself a spend event. Without this the cumulative cap never
@@ -145,15 +154,38 @@ app.post("/paypal/webhook", async (c) => {
   return c.body(null, 204);
 });
 
-app.get("/paypal/return", (c) =>
-  c.html(
-    `<body style="font-family:system-ui;padding:3rem;max-width:34rem">
-       <h2>Payment approved at PayPal</h2>
-       <p>Order <code>${c.req.query("token") ?? ""}</code> is ready to capture.</p>
-       <p><a href="/">Back to PayGuard</a></p>
+app.get("/paypal/return", (c) => {
+  const token = c.req.query("token") ?? "";
+  const pending = listApprovals().find((a) => a.paypalOrderId === token);
+  return c.html(
+    `<!doctype html><meta charset="utf-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1">
+     <title>Payment approved</title>
+     <body style="font-family:system-ui;padding:2.5rem 1rem;max-width:34rem;margin:0 auto;
+                  background:#0d1117;color:#e7edf3">
+       <h2 style="margin:0 0 .5rem">Payment approved at PayPal</h2>
+       <p style="color:#9aa7b4">Order <code>${token}</code> is ready to capture.</p>
+       ${
+         pending
+           ? `<button id="cap" style="font:inherit;font-weight:600;padding:.6rem 1.1rem;border:0;
+                     border-radius:7px;background:#4d8bff;color:#fff;cursor:pointer">Capture payment</button>
+              <p id="out" role="status" style="color:#9aa7b4"></p>
+              <script>
+                document.getElementById("cap").onclick = async (e) => {
+                  e.target.disabled = true;
+                  const r = await fetch("/api/approvals/${pending.id}/capture", { method: "POST" });
+                  const b = await r.json();
+                  document.getElementById("out").textContent =
+                    r.ok ? "Captured \u2014 " + b.status : b.error;
+                  e.target.disabled = !r.ok;
+                };
+              <\/script>`
+           : ""
+       }
+       <p><a href="/" style="color:#4d8bff">Back to PayGuard</a></p>
      </body>`,
-  ),
-);
+  );
+});
 
 app.get("/paypal/cancel", (c) =>
   c.html(
