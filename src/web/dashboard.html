@@ -110,7 +110,7 @@
   <div class="cards" id="cards" aria-live="polite"></div>
 
   <section aria-labelledby="pending-h">
-    <h2 id="pending-h">Awaiting your approval</h2>
+    <h2 id="pending-h">Needs you</h2>
     <div class="pending" id="pending"></div>
   </section>
 
@@ -180,7 +180,7 @@ function paint() {
   const toCapture = state.approvals.filter(x => x.status === "APPROVED" && x.paypalOrderId);
 
   document.getElementById("pending").innerHTML = (pending.length === 0 && toCapture.length === 0
-    ? `<p class="sub" style="margin:0">Nothing is waiting on you.</p>` : "") +
+    ? `<p class="sub" style="margin:0">Nothing needs you right now.</p>` : "") +
     toCapture.map(p => `
       <article class="approval" style="border-color:var(--accent);background:transparent">
         <div class="head">

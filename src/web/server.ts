@@ -52,6 +52,17 @@ app.post("/api/approvals/:id/approve", async (c) => {
     cancelUrl: `${new URL(c.req.url).origin}/paypal/cancel`,
   });
 
+  // The approval is itself a spend event. Without this the cumulative cap never
+  // sees approved escalations, and approving repeatedly would bypass it
+  // entirely -- each order is real money committed at PayPal.
+  record({
+    agent: pending.agent,
+    tool: "create_order",
+    decision: { outcome: "ALLOW", violations: pending.violations, mandateId: pending.mandateId },
+    request: pending.request,
+    paypalOrderId: order.id,
+  });
+
   return c.json(decide(pending.id, "APPROVED", order) ?? { error: "race" });
 });
 

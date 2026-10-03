@@ -41,3 +41,11 @@ enough to characterise any model's susceptibility in general.
 ## No mandate revocation
 
 A mandate is valid until it expires. There is no way to revoke one early.
+
+## Approving an escalation is not re-evaluated
+
+When the principal approves a parked payment, PayGuard creates the order
+without re-running the policy. The approval is recorded as spend, so the
+cumulative cap sees it and constrains everything after -- but if the mandate
+changed, or a different payment was approved in between, the approved request
+is not checked again against the current state.

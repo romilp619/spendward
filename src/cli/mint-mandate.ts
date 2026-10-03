@@ -18,7 +18,7 @@ const mandate: Mandate = {
   expiresAt: new Date(Date.now() + 30 * 864e5).toISOString(),
   currency: "USD",
   maxTransactionAmount: 250,
-  maxTotalAmount: 500,
+  maxTotalAmount: 1000,
   approvalCeiling: 300,
   maxQuantity: 1,
   allowedMerchants: ["TechStore"],

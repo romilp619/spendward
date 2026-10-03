@@ -201,7 +201,10 @@ export function evaluate(
         ledger.spent > 0
           ? `${money(ledger.spent, m.currency)} already spent, leaving ${money(m.maxTotalAmount - ledger.spent, m.currency)} of this mandate`
           : `single payment alone exceeds the mandate's total of ${money(m.maxTotalAmount, m.currency)}`,
-      escalatable: true,
+      // Not waivable. The per-transaction cap exists to be escalated -- that is
+      // what approvalCeiling is for -- but a total the principal can raise one
+      // click at a time is not a total. Spending more needs a new mandate.
+      escalatable: false,
     });
   }
 
