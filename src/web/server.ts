@@ -1,0 +1,126 @@
+/**
+ * PayGuard dashboard and approval surface.
+ * Run with: npm run web
+ */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+
+import { entries, verifyChain } from "../lib/audit.js";
+import { list as listApprovals, get as getApproval, decide } from "../lib/approvals.js";
+import { createOrder, getAccessToken } from "../lib/paypal.js";
+import type { SignedMandate } from "../lib/mandate.js";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const app = new Hono();
+
+function mandate(): SignedMandate | null {
+  const path = process.env.PAYGUARD_MANDATE;
+  if (!path) return null;
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as SignedMandate;
+  } catch {
+    return null;
+  }
+}
+
+app.get("/", (c) => c.html(readFileSync(join(here, "dashboard.html"), "utf8")));
+
+app.get("/api/state", (c) =>
+  c.json({
+    mandate: mandate()?.mandate ?? null,
+    audit: entries(),
+    approvals: listApprovals(),
+    chain: verifyChain(),
+  }),
+);
+
+app.post("/api/approvals/:id/approve", async (c) => {
+  const pending = getApproval(c.req.param("id"));
+  if (!pending) return c.json({ error: "not found" }, 404);
+  if (pending.status !== "PENDING") return c.json({ error: "already decided" }, 409);
+
+  // The order is only created now. Until the principal approved, PayPal had
+  // seen nothing at all.
+  const order = await createOrder({
+    amount: pending.request.amount,
+    currency: pending.request.currency,
+    description: `${pending.request.merchant} - ${pending.request.category}`,
+    returnUrl: `${new URL(c.req.url).origin}/paypal/return`,
+    cancelUrl: `${new URL(c.req.url).origin}/paypal/cancel`,
+  });
+
+  return c.json(decide(pending.id, "APPROVED", order) ?? { error: "race" });
+});
+
+app.post("/api/approvals/:id/reject", (c) => {
+  const updated = decide(c.req.param("id"), "REJECTED");
+  return updated ? c.json(updated) : c.json({ error: "not found or already decided" }, 404);
+});
+
+/**
+ * PayPal webhook receiver.
+ *
+ * When PAYPAL_WEBHOOK_ID is set the event is verified against PayPal before it
+ * is trusted. Without it the event is accepted but flagged, because an
+ * unverified webhook is an unauthenticated POST from anyone.
+ */
+app.post("/paypal/webhook", async (c) => {
+  const raw = await c.req.text();
+  const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+  let verified: string;
+
+  if (!webhookId) {
+    verified = "UNVERIFIED (PAYPAL_WEBHOOK_ID not set)";
+  } else {
+    const res = await fetch(
+      `${process.env.PAYPAL_API_BASE}/v1/notifications/verify-webhook-signature`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${await getAccessToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          auth_algo: c.req.header("paypal-auth-algo"),
+          cert_url: c.req.header("paypal-cert-url"),
+          transmission_id: c.req.header("paypal-transmission-id"),
+          transmission_sig: c.req.header("paypal-transmission-sig"),
+          transmission_time: c.req.header("paypal-transmission-time"),
+          webhook_id: webhookId,
+          webhook_event: JSON.parse(raw),
+        }),
+      },
+    );
+    const body = (await res.json()) as { verification_status?: string };
+    verified = body.verification_status ?? "UNKNOWN";
+  }
+
+  const event = JSON.parse(raw) as { event_type?: string; resource?: { id?: string } };
+  console.log(`[webhook] ${verified}  ${event.event_type ?? "?"}  ${event.resource?.id ?? ""}`);
+  return c.body(null, 204);
+});
+
+app.get("/paypal/return", (c) =>
+  c.html(
+    `<body style="font-family:system-ui;padding:3rem;max-width:34rem">
+       <h2>Payment approved at PayPal</h2>
+       <p>Order <code>${c.req.query("token") ?? ""}</code> is ready to capture.</p>
+       <p><a href="/">Back to PayGuard</a></p>
+     </body>`,
+  ),
+);
+
+app.get("/paypal/cancel", (c) =>
+  c.html(
+    `<body style="font-family:system-ui;padding:3rem;max-width:34rem">
+       <h2>Payment cancelled</h2><p><a href="/">Back to PayGuard</a></p>
+     </body>`,
+  ),
+);
+
+const port = Number(process.env.PORT ?? 3000);
+serve({ fetch: app.fetch, port });
+console.log(`PayGuard dashboard on http://localhost:${port}`);

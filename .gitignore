@@ -8,3 +8,4 @@ dist/
 audit.jsonl
 redteam-audit.jsonl
 redteam-catalog.json
+approvals.json

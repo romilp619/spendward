@@ -39,6 +39,12 @@ await call("injected: 3 units, funds redirected", "create_order", {
   sourceContext: "product description on listing page",
 });
 
+await call("over limit, within ceiling", "create_order", {
+  currencyCode: "USD",
+  items: [{ name: "Bose QuietComfort Ultra", quantity: 1, unitAmount: 289 }],
+  merchant: "TechStore", category: "electronics", payee: "TechStore",
+});
+
 await call("tool escalation", "create_refund", { captureId: "0NY123456789" });
 
 await client.close();

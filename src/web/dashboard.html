@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PayGuard</title>
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@34/dist/ag-grid-community.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f7f9;         --panel: #ffffff;      --ink: #11161d;
+    --muted: #5b6673;      --line: #e3e7ec;       --accent: #0b5cff;
+    --allow: #0a7d44;      --allow-bg: #e7f6ee;
+    --block: #c42b2b;      --block-bg: #fdeaea;
+    --approve: #9a6400;    --approve-bg: #fdf2dd;
+    --radius: 10px;
+  }
+  :root { --allow: #0a7d44; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1117;       --panel: #151b23;      --ink: #e7edf3;
+      --muted: #9aa7b4;    --line: #262f3a;       --accent: #4d8bff;
+      --allow: #3fb97a;    --allow-bg: #13301f;
+      --block: #ff6b6b;    --block-bg: #331616;
+      --approve: #e2a93a;  --approve-bg: #332814;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1117;         --panel: #151b23;      --ink: #e7edf3;
+    --muted: #9aa7b4;      --line: #262f3a;       --accent: #4d8bff;
+    --allow: #3fb97a;      --allow-bg: #13301f;
+    --block: #ff6b6b;      --block-bg: #331616;
+    --approve: #e2a93a;    --approve-bg: #332814;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 64px; }
+
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+  .tagline { color: var(--muted); font-size: 14px; }
+
+  .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin: 20px 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .card h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+  .card .big { font-size: 22px; font-weight: 650; letter-spacing: -0.02em; }
+  .card .sub { color: var(--muted); font-size: 13px; }
+
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 20px; overflow: hidden; }
+  section > h2 { font-size: 13px; margin: 0; padding: 13px 16px; border-bottom: 1px solid var(--line); font-weight: 650; }
+
+  .pending { padding: 16px; display: grid; gap: 12px; }
+  .approval { border: 1px solid var(--approve); background: var(--approve-bg); border-radius: var(--radius); padding: 14px 16px; }
+  .approval .head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+  .approval .amount { font-size: 19px; font-weight: 650; }
+  .approval ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13.5px; }
+  .actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+
+  button {
+    font: inherit; font-weight: 550; padding: 8px 15px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:hover { filter: brightness(1.07); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge.allow { color: var(--allow); background: var(--allow-bg); }
+  .badge.block { color: var(--block); background: var(--block-bg); }
+  .badge.approval { color: var(--approve); background: var(--approve-bg); }
+
+  .toolbar { display: flex; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  input[type=search] {
+    font: inherit; padding: 7px 11px; border-radius: 7px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--ink); flex: 1; min-width: 180px;
+  }
+  input[type=search]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  #grid { height: 420px; }
+
+  dialog {
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+    color: var(--ink); padding: 0; max-width: 620px; width: calc(100vw - 32px);
+  }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  dialog h3 { margin: 0; padding: 15px 18px; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .detail { padding: 18px; }
+  .row { display: grid; grid-template-columns: 150px 1fr; gap: 8px; padding: 5px 0; font-size: 14px; }
+  .row dt { color: var(--muted); }
+  .row dd { margin: 0; word-break: break-word; }
+  .violation { border-left: 3px solid var(--block); padding: 8px 12px; margin-top: 10px; background: var(--block-bg); border-radius: 0 6px 6px 0; }
+  .violation b { display: block; font-size: 13px; }
+  .violation span { color: var(--muted); font-size: 13px; }
+  .close { padding: 0 18px 18px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  .chain-ok { color: var(--allow); } .chain-bad { color: var(--block); }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>PayGuard</h1>
+    <span class="tagline">authorization firewall between AI agents and PayPal</span>
+  </header>
+
+  <div class="cards" id="cards" aria-live="polite"></div>
+
+  <section aria-labelledby="pending-h">
+    <h2 id="pending-h">Awaiting your approval</h2>
+    <div class="pending" id="pending"></div>
+  </section>
+
+  <section aria-labelledby="audit-h">
+    <h2 id="audit-h">Audit trail</h2>
+    <div class="toolbar">
+      <label class="visually-hidden" for="q">Filter decisions</label>
+      <input type="search" id="q" placeholder="Filter by tool, merchant, outcome or rule…">
+      <button id="refresh">Refresh</button>
+    </div>
+    <div id="grid"></div>
+  </section>
+</div>
+
+<dialog id="detail" aria-labelledby="detail-h">
+  <h3 id="detail-h">Investigation</h3>
+  <div class="detail" id="detail-body"></div>
+  <div class="close"><button id="detail-close" class="primary">Close</button></div>
+</dialog>
+
+<script type="module">
+const money = (a, c) => a == null ? "—" : `${c ?? "USD"} ${Number(a).toFixed(2)}`;
+const when  = t => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const esc   = s => String(s ?? "").replace(/[&<>"]/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
+
+const badge = o => o === "ALLOW" ? `<span class="badge allow">allowed</span>`
+               : o === "BLOCK"   ? `<span class="badge block">blocked</span>`
+               : `<span class="badge approval">approval</span>`;
+
+let grid, state = { audit: [], approvals: [], mandate: null, chain: { valid: true } };
+
+const columns = [
+  { headerName: "Time", field: "at", width: 110, valueFormatter: p => when(p.value) },
+  { headerName: "Agent", field: "agent", width: 125 },
+  { headerName: "Tool", field: "tool", width: 150 },
+  { headerName: "Amount", field: "amount", width: 115, type: "rightAligned",
+    valueFormatter: p => money(p.value, p.data.currency) },
+  { headerName: "Merchant", field: "merchant", width: 135 },
+  { headerName: "Decision", field: "outcome", width: 125,
+    cellRenderer: p => badge(p.value) },
+  { headerName: "Rules triggered", flex: 1, minWidth: 220,
+    valueGetter: p => p.data.violations.map(v => v.rule).join(", ") || "—" },
+];
+
+function paint() {
+  const a = state.audit;
+  const blocked = a.filter(e => e.outcome === "BLOCK").length;
+  const escalated = a.filter(e => e.outcome === "REQUIRE_APPROVAL").length;
+  const spent = a.filter(e => e.outcome === "ALLOW").reduce((s, e) => s + (e.amount ?? 0), 0);
+  const m = state.mandate;
+
+  document.getElementById("cards").innerHTML = `
+    <div class="card"><h2>Mandate</h2>
+      <div class="big">${m ? money(m.maxTransactionAmount, m.currency) : "—"}</div>
+      <div class="sub">per transaction · ${m ? money(m.maxTotalAmount, m.currency) : "—"} total</div></div>
+    <div class="card"><h2>Spent</h2>
+      <div class="big">${money(spent, m?.currency)}</div>
+      <div class="sub">${m ? money(m.maxTotalAmount - spent, m.currency) + " remaining" : ""}</div></div>
+    <div class="card"><h2>Refused</h2>
+      <div class="big">${blocked}</div>
+      <div class="sub">${escalated} escalated to you</div></div>
+    <div class="card"><h2>Audit chain</h2>
+      <div class="big ${state.chain.valid ? "chain-ok" : "chain-bad"}">${state.chain.valid ? "intact" : "broken"}</div>
+      <div class="sub">${state.chain.valid ? a.length + " entries verified" : "entry #" + state.chain.brokenAt + " — " + state.chain.reason}</div></div>`;
+
+  const pending = state.approvals.filter(x => x.status === "PENDING");
+  document.getElementById("pending").innerHTML = pending.length === 0
+    ? `<p class="sub" style="margin:0">Nothing is waiting on you.</p>`
+    : pending.map(p => `
+      <article class="approval">
+        <div class="head">
+          <div><strong>${esc(p.request.merchant)}</strong> · ${esc(p.request.category)}
+            <div class="sub">${esc(p.agent)} · quantity ${p.request.quantity}</div></div>
+          <div class="amount">${money(p.request.amount, p.request.currency)}</div>
+        </div>
+        <ul>${p.violations.map(v => `<li>${esc(v.evidence)}</li>`).join("")}</ul>
+        <div class="actions">
+          <button class="primary" data-approve="${p.id}">Approve once</button>
+          <button data-reject="${p.id}">Reject</button>
+        </div>
+      </article>`).join("");
+
+  grid?.setGridOption("rowData", a);
+}
+
+async function load() {
+  const r = await fetch("/api/state");
+  state = await r.json();
+  paint();
+}
+
+function openDetail(e) {
+  document.getElementById("detail-body").innerHTML = `
+    <dl class="row"><dt>Decision</dt><dd>${badge(e.outcome)}</dd></dl>
+    <dl class="row"><dt>Agent</dt><dd>${esc(e.agent)}</dd></dl>
+    <dl class="row"><dt>Mandate</dt><dd><code>${esc(e.mandateId)}</code></dd></dl>
+    <dl class="row"><dt>Tool</dt><dd><code>${esc(e.tool)}</code></dd></dl>
+    <dl class="row"><dt>Requested</dt><dd>${money(e.amount, e.currency)} · quantity ${e.quantity ?? "—"}</dd></dl>
+    <dl class="row"><dt>Merchant</dt><dd>${esc(e.merchant)}</dd></dl>
+    <dl class="row"><dt>Payee</dt><dd>${esc(e.recipient)}</dd></dl>
+    <dl class="row"><dt>Instruction source</dt><dd>${esc(e.sourceContext) || "—"}</dd></dl>
+    <dl class="row"><dt>PayPal call</dt><dd>${e.paypalOrderId ? "<code>" + esc(e.paypalOrderId) + "</code>" : "<strong>not executed</strong>"}</dd></dl>
+    <dl class="row"><dt>Entry hash</dt><dd><code>${esc(e.hash).slice(0,32)}…</code></dd></dl>
+    ${e.violations.map(v => `
+      <div class="violation">
+        <b>${esc(v.rule)} · ${esc(v.severity)}</b>
+        <span>policy: ${esc(v.policy)}<br>requested: ${esc(v.requested)}<br>${esc(v.evidence)}</span>
+      </div>`).join("")}`;
+  document.getElementById("detail").showModal();
+}
+
+grid = agGrid.createGrid(document.getElementById("grid"), {
+  theme: matchMedia("(prefers-color-scheme: dark)").matches
+    ? agGrid.themeQuartz.withPart(agGrid.colorSchemeDark) : agGrid.themeQuartz,
+  columnDefs: columns,
+  rowData: [],
+  rowHeight: 42,
+  getRowStyle: p => p.data.outcome === "BLOCK" ? { background: "var(--block-bg)" }
+                  : p.data.outcome === "REQUIRE_APPROVAL" ? { background: "var(--approve-bg)" } : undefined,
+  onRowClicked: e => openDetail(e.data),
+  overlayNoRowsTemplate: "No decisions recorded yet. Run an agent to populate this.",
+});
+
+document.getElementById("q").addEventListener("input", e =>
+  grid.setGridOption("quickFilterText", e.target.value));
+document.getElementById("refresh").addEventListener("click", load);
+document.getElementById("detail-close").addEventListener("click", () =>
+  document.getElementById("detail").close());
+
+document.getElementById("pending").addEventListener("click", async e => {
+  const approve = e.target.dataset?.approve, reject = e.target.dataset?.reject;
+  if (!approve && !reject) return;
+  e.target.disabled = true;
+  await fetch(`/api/approvals/${approve ?? reject}/${approve ? "approve" : "reject"}`, { method: "POST" });
+  await load();
+});
+
+load();
+setInterval(load, 4000);
+</script>
+</body>
+</html>

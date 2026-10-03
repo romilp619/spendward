@@ -21,6 +21,7 @@ import type { PaymentRequest } from "../lib/policy.js";
 import { evaluate } from "../lib/policy.js";
 import { createOrder, captureOrder, getOrder } from "../lib/paypal.js";
 import { record, spentUnder } from "../lib/audit.js";
+import { park } from "../lib/approvals.js";
 import { search } from "../demo/catalog.js";
 
 function loadMandate(): SignedMandate {
@@ -34,7 +35,7 @@ const agent = mandate.mandate.agent;
 
 /** What the agent is told when PayGuard refuses. Structured so the model can
  *  explain the refusal to its user rather than silently retrying. */
-function refusal(decision: ReturnType<typeof evaluate>) {
+function refusal(decision: ReturnType<typeof evaluate>, pendingId?: string) {
   const lines = decision.violations.map(
     (v) => `- ${v.rule} (${v.severity}): policy is ${v.policy}, you requested ${v.requested}. ${v.evidence}`,
   );
@@ -47,7 +48,8 @@ function refusal(decision: ReturnType<typeof evaluate>) {
           `PayGuard ${decision.outcome === "BLOCK" ? "refused" : "escalated"} this request.\n\n` +
           `${lines.join("\n")}\n\n` +
           (decision.outcome === "REQUIRE_APPROVAL"
-            ? "The principal has been asked to approve it. Do not retry; wait for their decision."
+            ? `The principal has been asked to approve it (request ${pendingId}). ` +
+              "Tell the user it is awaiting their approval. Do not retry."
             : "This exceeds the authority you were granted. Do not retry with altered parameters."),
       },
     ],
@@ -76,7 +78,13 @@ async function guarded<T>(
 
   if (decision.outcome !== "ALLOW") {
     record({ agent, tool, decision, request: probe, paypalOrderId: null });
-    return refusal(decision);
+    // An escalation is parked for the principal. PayPal is not contacted either
+    // way until they decide.
+    const pending =
+      decision.outcome === "REQUIRE_APPROVAL" && request
+        ? park({ agent, decision, request })
+        : undefined;
+    return refusal(decision, pending?.id);
   }
 
   const result = await act();
