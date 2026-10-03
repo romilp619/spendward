@@ -8,9 +8,9 @@ import { dirname, join } from "node:path";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 
-import { entries, verifyChain } from "../lib/audit.js";
+import { entries, verifyChain, record } from "../lib/audit.js";
 import { list as listApprovals, get as getApproval, decide } from "../lib/approvals.js";
-import { createOrder, getAccessToken } from "../lib/paypal.js";
+import { createOrder, captureOrder, getAccessToken } from "../lib/paypal.js";
 import type { SignedMandate } from "../lib/mandate.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -53,6 +53,37 @@ app.post("/api/approvals/:id/approve", async (c) => {
   });
 
   return c.json(decide(pending.id, "APPROVED", order) ?? { error: "race" });
+});
+
+/**
+ * Captures an approved order. PayPal refuses this until the buyer has approved
+ * at checkout, so the dashboard surfaces that error rather than hiding it.
+ */
+app.post("/api/approvals/:id/capture", async (c) => {
+  const pending = getApproval(c.req.param("id"));
+  if (!pending?.paypalOrderId) return c.json({ error: "no order to capture" }, 404);
+  try {
+    const result = await captureOrder(pending.paypalOrderId);
+    record({
+      agent: pending.agent,
+      tool: "pay_order",
+      decision: { outcome: "ALLOW", violations: [], mandateId: pending.mandateId },
+      request: pending.request,
+      paypalOrderId: result.id,
+    });
+    return c.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const notApproved = message.includes("ORDER_NOT_APPROVED");
+    return c.json(
+      {
+        error: notApproved
+          ? "The buyer has not approved this order at PayPal yet. Open the checkout link first."
+          : message,
+      },
+      409,
+    );
+  }
 });
 
 app.post("/api/approvals/:id/reject", (c) => {

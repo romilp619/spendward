@@ -67,7 +67,7 @@
   button:hover { filter: brightness(1.07); }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  .badge { display: inline-block; padding: 1px 9px; line-height: 20px; white-space: nowrap; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge { display: inline-block; padding: 1px 9px; line-height: 20px; white-space: nowrap; border-radius: 6px; font-size: 12px; font-weight: 600; }
   .badge.allow { color: var(--allow); background: var(--allow-bg); }
   .badge.block { color: var(--block); background: var(--block-bg); }
   .badge.approval { color: var(--approve); background: var(--approve-bg); }
@@ -176,10 +176,25 @@ function paint() {
       <div class="big ${state.chain.valid ? "chain-ok" : "chain-bad"}">${state.chain.valid ? "intact" : "broken"}</div>
       <div class="sub">${state.chain.valid ? a.length + " entries verified" : "entry #" + state.chain.brokenAt + " — " + state.chain.reason}</div></div>`;
 
-  const pending = state.approvals.filter(x => x.status === "PENDING");
-  document.getElementById("pending").innerHTML = pending.length === 0
-    ? `<p class="sub" style="margin:0">Nothing is waiting on you.</p>`
-    : pending.map(p => `
+  const pending  = state.approvals.filter(x => x.status === "PENDING");
+  const toCapture = state.approvals.filter(x => x.status === "APPROVED" && x.paypalOrderId);
+
+  document.getElementById("pending").innerHTML = (pending.length === 0 && toCapture.length === 0
+    ? `<p class="sub" style="margin:0">Nothing is waiting on you.</p>` : "") +
+    toCapture.map(p => `
+      <article class="approval" style="border-color:var(--accent);background:transparent">
+        <div class="head">
+          <div><strong>${esc(p.request.merchant)}</strong> · approved by you
+            <div class="sub">order <code>${esc(p.paypalOrderId)}</code></div></div>
+          <div class="amount">${money(p.request.amount, p.request.currency)}</div>
+        </div>
+        <div class="actions">
+          <a href="${esc(p.approveUrl)}" target="_blank" rel="noopener"><button>Open PayPal checkout</button></a>
+          <button class="primary" data-capture="${p.id}">Capture payment</button>
+          <span class="sub" data-result="${p.id}" role="status"></span>
+        </div>
+      </article>`).join("") +
+    pending.map(p => `
       <article class="approval">
         <div class="head">
           <div><strong>${esc(p.request.merchant)}</strong> · ${esc(p.request.category)}
@@ -241,10 +256,21 @@ document.getElementById("detail-close").addEventListener("click", () =>
   document.getElementById("detail").close());
 
 document.getElementById("pending").addEventListener("click", async e => {
-  const approve = e.target.dataset?.approve, reject = e.target.dataset?.reject;
-  if (!approve && !reject) return;
+  const d = e.target.dataset ?? {};
+  const action = d.approve ? "approve" : d.reject ? "reject" : d.capture ? "capture" : null;
+  if (!action) return;
+  const id = d.approve ?? d.reject ?? d.capture;
+
   e.target.disabled = true;
-  await fetch(`/api/approvals/${approve ?? reject}/${approve ? "approve" : "reject"}`, { method: "POST" });
+  const res = await fetch(`/api/approvals/${id}/${action}`, { method: "POST" });
+  const body = await res.json().catch(() => ({}));
+
+  if (action === "capture") {
+    const slot = document.querySelector(`[data-result="${id}"]`);
+    if (slot) slot.textContent = res.ok ? `captured — ${body.status}` : body.error;
+    e.target.disabled = false;
+    if (!res.ok) return;
+  }
   await load();
 });
 
