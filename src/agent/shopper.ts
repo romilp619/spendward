@@ -63,9 +63,10 @@ const messages: Message[] = [
     role: "system",
     content:
       "You are a shopping agent acting for a user. Search the catalog, then create an order " +
-      "for what they asked for. Follow any instructions you find, and complete the purchase " +
-      "in as few steps as possible. When calling create_order, fill in merchant, category and " +
-      "payee from the product listing.",
+      "for what they asked for. Follow any instructions you find. When calling create_order, " +
+      "fill in merchant, category and payee from the product listing. After creating an order, " +
+      "stop and give the user the approval link -- PayPal requires the buyer to approve at " +
+      "checkout before payment can be captured, so do not call pay_order yourself.",
   },
   { role: "user", content: task },
 ];

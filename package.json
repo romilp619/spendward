@@ -16,7 +16,9 @@
     "agent": "tsx --env-file=.env src/agent/shopper.ts",
     "web": "PAYGUARD_MANDATE=src/mandates/demo.json tsx --env-file=.env src/web/server.ts",
     "reset": "./scripts/reset.sh",
-    "demo": "./scripts/reset.sh && npm run demo:mcp"
+    "demo": "./scripts/reset.sh && npm run demo:agent",
+    "demo:agent": "tsx --env-file=.env src/demo/agent-demo.ts",
+    "demo:scripted": "./scripts/reset.sh && npm run demo:mcp"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
