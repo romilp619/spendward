@@ -159,7 +159,7 @@ function paint() {
   const a = state.audit;
   const blocked = a.filter(e => e.outcome === "BLOCK").length;
   const escalated = a.filter(e => e.outcome === "REQUIRE_APPROVAL").length;
-  const spent = a.filter(e => e.outcome === "ALLOW").reduce((s, e) => s + (e.amount ?? 0), 0);
+  const spent = state.spent ?? 0;
   const m = state.mandate;
 
   document.getElementById("cards").innerHTML = `

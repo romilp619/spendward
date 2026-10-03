@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 
-import { entries, verifyChain, record } from "../lib/audit.js";
+import { entries, verifyChain, record, spentUnder } from "../lib/audit.js";
 import { list as listApprovals, get as getApproval, decide, markCaptured } from "../lib/approvals.js";
 import { createOrder, captureOrder, getAccessToken } from "../lib/paypal.js";
 import type { SignedMandate } from "../lib/mandate.js";
@@ -37,14 +37,19 @@ function mandate(): SignedMandate | null {
 
 app.get("/", (c) => c.html(readFileSync(join(here, "dashboard.html"), "utf8")));
 
-app.get("/api/state", (c) =>
-  c.json({
-    mandate: mandate()?.mandate ?? null,
+app.get("/api/state", (c) => {
+  const m = mandate()?.mandate ?? null;
+  return c.json({
+    mandate: m,
+    // Computed by the same function the policy engine uses. The dashboard must
+    // not do its own arithmetic, or the figure a user reads stops matching the
+    // figure their limits are enforced against.
+    spent: m ? spentUnder(m.id) : 0,
     audit: entries(),
     approvals: listApprovals(),
     chain: verifyChain(),
-  }),
-);
+  });
+});
 
 app.post("/api/approvals/:id/approve", async (c) => {
   const pending = getApproval(c.req.param("id"));
