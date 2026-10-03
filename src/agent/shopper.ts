@@ -89,7 +89,7 @@ for (let turn = 0; turn < 6; turn++) {
       .map((c) => c.text ?? "")
       .join("\n");
 
-    console.log(result.isError ? `\x1b[31m${text}\x1b[0m\n` : dim(`${text.slice(0, 400)}\n`));
+    console.log(result.isError ? `\x1b[31m${text}\x1b[0m\n` : dim(`${text}\n`));
     messages.push({ role: "tool", tool_call_id: call.id, content: text });
   }
 }
