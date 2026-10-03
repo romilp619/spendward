@@ -28,7 +28,7 @@ PayGuard answers that second question.
 > PayPal's protections protect PayPal and the merchant.
 > PayGuard protects the buyer from their own agent.
 
-![PayGuard dashboard showing one allowed payment, two refused, and one escalated for approval](docs/dashboard.png)
+![PayGuard dashboard: mandate limits, spend against them, the audit trail with one allowed payment, two refused and one escalated, and PayPal's own signed confirmations alongside](docs/dashboard.png)
 
 ## What it does
 
