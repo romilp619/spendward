@@ -5,6 +5,6 @@ dist/
 .env.local
 *.log
 .DS_Store
-audit.db
+audit.jsonl
 redteam-audit.jsonl
 redteam-catalog.json
