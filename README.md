@@ -199,6 +199,33 @@ npm run redteam              # the benchmark
 npm run audit:verify         # walk the hash chain
 ```
 
+### Webhooks (optional)
+
+PayPal confirms what actually happened independently of what PayGuard decided.
+Those confirmations are kept in their own log and shown separately in the
+dashboard -- merging them into the audit trail would let an outside party write
+into the record of PayGuard's own decisions.
+
+PayPal needs a public URL, so expose the server:
+
+```bash
+npx cloudflared tunnel --url http://localhost:3000
+```
+
+Then in **Apps & Credentials -> your app -> Webhooks -> Add Webhook**:
+
+- URL: `https://your-tunnel-url/paypal/webhook` (the path matters)
+- Events: `CHECKOUT.ORDER.APPROVED` and `PAYMENT.CAPTURE.COMPLETED`
+
+Put the tunnel URL in `PUBLIC_URL` and the webhook id in `PAYPAL_WEBHOOK_ID`.
+`PUBLIC_URL` is what PayPal redirects buyers back to after checkout, so without
+it they land on `localhost` and only your own machine can complete a payment.
+
+With `PAYPAL_WEBHOOK_ID` set, each event is checked against PayPal's
+`verify-webhook-signature` endpoint and shown as `verified`. Without it events
+are accepted but flagged, because an unverified webhook is an unauthenticated
+POST from anyone.
+
 ### Use it with Claude Desktop or any MCP client
 
 ```json
