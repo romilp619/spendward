@@ -28,6 +28,8 @@ PayGuard answers that second question.
 > PayPal's protections protect PayPal and the merchant.
 > PayGuard protects the buyer from their own agent.
 
+![PayGuard dashboard showing one allowed payment, two refused, and one escalated for approval](docs/dashboard.png)
+
 ## What it does
 
 You grant an agent a **signed mandate** instead of credentials:
@@ -110,6 +112,10 @@ Two findings worth stating plainly:
   enforcement point on 5 of 5 models — and that is the realistic majority case.
 
 Full detail in [RESULTS.md](RESULTS.md). Limitations in [KNOWN_GAPS.md](KNOWN_GAPS.md).
+
+![PayPal sandbox checkout for the approved USD 289.00 payment](docs/checkout.png)
+
+*The escalated payment, after approval, at PayPal's own checkout.*
 
 ## How it works
 

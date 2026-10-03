@@ -72,7 +72,8 @@
   .badge.block { color: var(--block); background: var(--block-bg); }
   .badge.approval { color: var(--approve); background: var(--approve-bg); }
 
-  .toolbar { display: flex; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .toolbar label { align-self: center; color: var(--muted); font-size: 14px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   input[type=search] {
     font: inherit; padding: 7px 11px; border-radius: 7px; border: 1px solid var(--line);
     background: var(--bg); color: var(--ink); flex: 1; min-width: 180px;
@@ -97,7 +98,9 @@
   .close { padding: 0 18px 18px; }
   code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
   .chain-ok { color: var(--allow); } .chain-bad { color: var(--block); }
+  dialog { max-height: 85vh; overflow-y: auto; }
   @media (max-width: 560px) { .row { grid-template-columns: 1fr; gap: 2px; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
@@ -117,11 +120,11 @@
   <section aria-labelledby="audit-h">
     <h2 id="audit-h">Audit trail</h2>
     <div class="toolbar">
-      <label class="visually-hidden" for="q">Filter decisions</label>
+      <label for="q">Filter decisions</label>
       <input type="search" id="q" placeholder="Filter by tool, merchant, outcome or rule…">
       <button id="refresh">Refresh</button>
     </div>
-    <div id="grid"></div>
+    <div id="grid" role="region" aria-label="Decision history. Select a row and press Enter to investigate it."></div>
   </section>
 </div>
 
@@ -248,6 +251,8 @@ grid = agGrid.createGrid(document.getElementById("grid"), {
   getRowStyle: p => p.data.outcome === "BLOCK" ? { background: "var(--block-bg)" }
                   : p.data.outcome === "REQUIRE_APPROVAL" ? { background: "var(--approve-bg)" } : undefined,
   onRowClicked: e => openDetail(e.data),
+  // Without this the investigation panel is mouse-only.
+  onCellKeyDown: e => { if (e.event?.key === "Enter" || e.event?.key === " ") openDetail(e.data); },
   overlayNoRowsTemplate: "No decisions recorded yet. Run an agent to populate this.",
 });
 
