@@ -364,8 +364,13 @@ grid = agGrid.createGrid(document.getElementById("grid"), {
   columnDefs: columns,
   rowData: [],
   rowHeight: 42,
-  getRowStyle: p => p.data.outcome === "BLOCK" ? { background: "var(--block-bg)" }
-                  : p.data.outcome === "REQUIRE_APPROVAL" ? { background: "var(--approve-bg)" } : undefined,
+  // Every decision carries its colour, so the outcome is readable from the row
+  // itself without reading the badge.
+  getRowStyle: p => ({
+    ALLOW: { background: "var(--allow-bg)" },
+    BLOCK: { background: "var(--block-bg)" },
+    REQUIRE_APPROVAL: { background: "var(--approve-bg)" },
+  })[p.data.outcome],
   onRowClicked: e => openDetail(e.data),
   // Without this the investigation panel is mouse-only.
   onCellKeyDown: e => { if (e.event?.key === "Enter" || e.event?.key === " ") openDetail(e.data); },
