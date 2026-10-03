@@ -178,9 +178,11 @@ function paint() {
 
   const pending  = state.approvals.filter(x => x.status === "PENDING");
   const toCapture = state.approvals.filter(x => x.status === "APPROVED" && x.paypalOrderId);
+  const captured  = state.approvals.filter(x => x.status === "CAPTURED");
 
   document.getElementById("pending").innerHTML = (pending.length === 0 && toCapture.length === 0
-    ? `<p class="sub" style="margin:0">Nothing needs you right now.</p>` : "") +
+    ? `<p class="sub" style="margin:0">Nothing needs you right now.${
+        captured.length ? ` ${captured.length} payment${captured.length > 1 ? "s" : ""} captured.` : ""}</p>` : "") +
     toCapture.map(p => `
       <article class="approval" style="border-color:var(--accent);background:transparent">
         <div class="head">

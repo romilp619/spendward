@@ -84,10 +84,16 @@ export function entries(): AuditEntry[] {
   return readAll();
 }
 
-/** Total allowed spend recorded so far, which is what the policy engine caps. */
+/**
+ * Total committed spend under a mandate.
+ *
+ * Only order creation counts. A capture moves money that was already committed
+ * when the order was created, so counting both would bill the mandate twice for
+ * one payment.
+ */
 export function spentUnder(mandateId: string): number {
   return readAll()
-    .filter((e) => e.mandateId === mandateId && e.outcome === "ALLOW")
+    .filter((e) => e.mandateId === mandateId && e.outcome === "ALLOW" && e.tool === "create_order")
     .reduce((sum, e) => sum + (e.amount ?? 0), 0);
 }
 

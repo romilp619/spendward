@@ -14,7 +14,7 @@ export interface PendingApproval {
   mandateId: string | null;
   request: PaymentRequest;
   violations: Decision["violations"];
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CAPTURED";
   decidedAt: string | null;
   /** Set once an approved request has been sent to PayPal. */
   paypalOrderId: string | null;
@@ -60,6 +60,15 @@ export function list(): PendingApproval[] {
 
 export function get(id: string): PendingApproval | undefined {
   return readAll().find((a) => a.id === id);
+}
+
+export function markCaptured(id: string): PendingApproval | undefined {
+  const all = readAll();
+  const entry = all.find((a) => a.id === id);
+  if (!entry || entry.status !== "APPROVED") return undefined;
+  entry.status = "CAPTURED";
+  writeAll(all);
+  return entry;
 }
 
 export function decide(

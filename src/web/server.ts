@@ -9,7 +9,7 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 
 import { entries, verifyChain, record } from "../lib/audit.js";
-import { list as listApprovals, get as getApproval, decide } from "../lib/approvals.js";
+import { list as listApprovals, get as getApproval, decide, markCaptured } from "../lib/approvals.js";
 import { createOrder, captureOrder, getAccessToken } from "../lib/paypal.js";
 import type { SignedMandate } from "../lib/mandate.js";
 
@@ -82,6 +82,7 @@ app.post("/api/approvals/:id/approve", async (c) => {
 app.post("/api/approvals/:id/capture", async (c) => {
   const pending = getApproval(c.req.param("id"));
   if (!pending?.paypalOrderId) return c.json({ error: "no order to capture" }, 404);
+  if (pending.status === "CAPTURED") return c.json({ error: "already captured" }, 409);
   try {
     const result = await captureOrder(pending.paypalOrderId);
     record({
@@ -91,6 +92,7 @@ app.post("/api/approvals/:id/capture", async (c) => {
       request: pending.request,
       paypalOrderId: result.id,
     });
+    markCaptured(pending.id);
     return c.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
