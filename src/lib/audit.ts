@@ -11,6 +11,11 @@ export interface AuditEntry {
   outcome: Decision["outcome"];
   amount: number | null;
   currency: string | null;
+  quantity: number | null;
+  merchant: string | null;
+  recipient: string | null;
+  category: string | null;
+  isSubscription: boolean | null;
   violations: Decision["violations"];
   paypalOrderId: string | null;
   /** Where the agent's instruction came from, when it is known. */
@@ -59,6 +64,11 @@ export function record(input: {
     outcome: input.decision.outcome,
     amount: input.request?.amount ?? null,
     currency: input.request?.currency ?? null,
+    quantity: input.request?.quantity ?? null,
+    merchant: input.request?.merchant ?? null,
+    recipient: input.request?.recipient ?? null,
+    category: input.request?.category ?? null,
+    isSubscription: input.request?.isSubscription ?? null,
     violations: input.decision.violations,
     paypalOrderId: input.paypalOrderId,
     sourceContext: input.request?.sourceContext ?? null,

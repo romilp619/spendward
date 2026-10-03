@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "redteam": "tsx redteam/run.ts",
+    "redteam": "tsx --env-file=.env redteam/run.ts",
     "demo:spine": "tsx --env-file=.env src/demo/spine.ts",
     "mint": "tsx --env-file=.env src/cli/mint-mandate.ts",
     "mcp": "tsx --env-file=.env src/mcp/server.ts",

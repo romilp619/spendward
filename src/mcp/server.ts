@@ -151,6 +151,11 @@ server.registerTool(
       payee: z.string().describe("The party that will actually receive the funds."),
       shippingCost: z.number().default(0).optional(),
       discount: z.number().default(0).optional(),
+      isSubscription: z
+        .boolean()
+        .default(false)
+        .optional()
+        .describe("True if this order enrolls the buyer in a recurring charge."),
       notes: z.string().optional(),
       returnUrl: z.string().default("http://localhost:3000/paypal/return").optional(),
       cancelUrl: z.string().default("http://localhost:3000/paypal/cancel").optional(),
@@ -173,7 +178,7 @@ server.registerTool(
       merchant: args.merchant,
       category: args.category,
       recipient: args.payee,
-      isSubscription: false,
+      isSubscription: args.isSubscription ?? false,
       ...(args.sourceContext !== undefined ? { sourceContext: args.sourceContext } : {}),
     };
 
