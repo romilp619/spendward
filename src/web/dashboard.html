@@ -38,21 +38,32 @@
     margin: 0; background: var(--bg); color: var(--ink);
     font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
-  .wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 16px 72px; }
+  /* Money must align column to column, or scanning a ledger is guesswork. */
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
 
-  header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
-  .mark { width: 26px; height: 26px; color: var(--accent); flex: none; }
-  h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+  header { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; padding-bottom: 18px;
+           border-bottom: 1px solid var(--line); }
+  .mark { width: 30px; height: 30px; color: var(--accent); flex: none; }
+  .wordmark { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  h1 { font-size: 21px; margin: 0; letter-spacing: -0.025em; font-weight: 680; }
   .tagline { color: var(--muted); font-size: 14px; }
 
-  .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin: 20px 0; }
+  .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin: 22px 0; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
   .card h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
-  .card .big { font-size: 22px; font-weight: 650; letter-spacing: -0.02em; }
+  .card .big { font-size: 25px; font-weight: 660; letter-spacing: -0.035em; line-height: 1.15; }
+  .card .sub { margin-top: 3px; }
+  /* The budget bar is the mark made functional: a fixed line, a rising fill. */
+  .meter { height: 5px; border-radius: 3px; background: var(--line); margin-top: 11px; overflow: hidden; }
+  .meter > i { display: block; height: 100%; background: var(--accent); border-radius: 3px;
+               transition: width .45s ease; }
+  .meter.over > i { background: var(--block); }
   .card .sub { color: var(--muted); font-size: 13px; }
 
   section { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 20px; overflow: hidden; }
-  section > h2 { font-size: 13px; margin: 0; padding: 13px 16px; border-bottom: 1px solid var(--line); font-weight: 650; }
+  section > h2 { font-size: 12.5px; margin: 0; padding: 14px 16px; border-bottom: 1px solid var(--line);
+                 font-weight: 660; letter-spacing: -0.005em; }
 
   .pending { padding: 16px; display: grid; gap: 12px; }
   .approval { border: 1px solid var(--approve); background: var(--approve-bg); border-radius: var(--radius); padding: 14px 16px; }
@@ -103,6 +114,7 @@
   dialog { max-height: 85vh; overflow-y: auto; }
   @media (max-width: 560px) { .row { grid-template-columns: 1fr; gap: 2px; } }
   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  @media (max-width: 560px) { .card .big { font-size: 22px; } }
 </style>
 </head>
 <body>
@@ -113,8 +125,10 @@
       <path d="M3.2 16a12.8 12.8 0 0 0 25.6 0Z" fill="currentColor" opacity=".22"/>
       <circle cx="16" cy="16" r="12.8" stroke="currentColor" stroke-width="2.6"/>
     </svg>
-    <h1>Spendward</h1>
-    <span class="tagline">authorization firewall between AI agents and PayPal</span>
+    <div class="wordmark">
+      <h1>Spendward</h1>
+      <span class="tagline">authorization firewall between AI agents and PayPal</span>
+    </div>
   </header>
 
   <div class="cards" id="cards" aria-live="polite"></div>
@@ -161,7 +175,8 @@ const columns = [
   { headerName: "Time", field: "at", width: 110, valueFormatter: p => when(p.value) },
   { headerName: "Agent", field: "agent", width: 125 },
   { headerName: "Tool", field: "tool", width: 150 },
-  { headerName: "Amount", field: "amount", width: 115, type: "rightAligned",
+  { headerName: "Amount", field: "amount", width: 118, type: "rightAligned",
+    cellStyle: { fontVariantNumeric: "tabular-nums" },
     valueFormatter: p => p.value == null ? "—" : money(p.value, p.data.currency) },
   { headerName: "Merchant", field: "merchant", width: 135, valueFormatter: p => p.value ?? "—" },
   { headerName: "Decision", field: "outcome", width: 125,
@@ -179,11 +194,14 @@ function paint() {
 
   document.getElementById("cards").innerHTML = `
     <div class="card"><h2>Mandate</h2>
-      <div class="big">${m ? money(m.maxTransactionAmount, m.currency) : "—"}</div>
-      <div class="sub">per transaction · ${m ? money(m.maxTotalAmount, m.currency) : "—"} total</div></div>
+      <div class="big num">${m ? money(m.maxTransactionAmount, m.currency) : "—"}</div>
+      <div class="sub">per transaction · <span class="num">${m ? money(m.maxTotalAmount, m.currency) : "—"}</span> total</div></div>
     <div class="card"><h2>Spent</h2>
-      <div class="big">${money(spent, m?.currency)}</div>
-      <div class="sub">${m ? money(m.maxTotalAmount - spent, m.currency) + " remaining" : ""}</div></div>
+      <div class="big num">${money(spent, m?.currency)}</div>
+      <div class="sub">${m ? `<span class="num">${money(m.maxTotalAmount - spent, m.currency)}</span> remaining` : ""}</div>
+      ${m ? `<div class="meter${spent > m.maxTotalAmount ? " over" : ""}" role="img"
+               aria-label="${Math.round((spent / m.maxTotalAmount) * 100)} percent of the mandate used">
+               <i style="width:${Math.min(100, (spent / m.maxTotalAmount) * 100)}%"></i></div>` : ""}</div>
     <div class="card"><h2>Refused</h2>
       <div class="big">${blocked}</div>
       <div class="sub">${escalated} escalated to you</div></div>
@@ -203,7 +221,7 @@ function paint() {
         <div class="head">
           <div><strong>${esc(p.request.merchant)}</strong> · approved by you
             <div class="sub">order <code>${esc(p.paypalOrderId)}</code></div></div>
-          <div class="amount">${money(p.request.amount, p.request.currency)}</div>
+          <div class="amount num">${money(p.request.amount, p.request.currency)}</div>
         </div>
         <div class="actions">
           <a href="${esc(p.approveUrl)}" target="_blank" rel="noopener"><button>Open PayPal checkout</button></a>
@@ -216,7 +234,7 @@ function paint() {
         <div class="head">
           <div><strong>${esc(p.request.merchant)}</strong> · ${esc(p.request.category)}
             <div class="sub">${esc(p.agent)} · quantity ${p.request.quantity}</div></div>
-          <div class="amount">${money(p.request.amount, p.request.currency)}</div>
+          <div class="amount num">${money(p.request.amount, p.request.currency)}</div>
         </div>
         <ul>${p.violations.map(v => `<li>${esc(v.evidence)}</li>`).join("")}</ul>
         <div class="actions">
