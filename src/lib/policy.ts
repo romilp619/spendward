@@ -197,7 +197,10 @@ export function evaluate(
       severity: "HIGH",
       policy: `total spend <= ${money(m.maxTotalAmount, m.currency)}`,
       requested: money(projected, m.currency),
-      evidence: `${money(ledger.spent, m.currency)} already spent under this mandate`,
+      evidence:
+        ledger.spent > 0
+          ? `${money(ledger.spent, m.currency)} already spent, leaving ${money(m.maxTotalAmount - ledger.spent, m.currency)} of this mandate`
+          : `single payment alone exceeds the mandate's total of ${money(m.maxTotalAmount, m.currency)}`,
       escalatable: true,
     });
   }

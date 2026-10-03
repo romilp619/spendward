@@ -7,7 +7,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "redteam": "tsx redteam/run.ts"
+    "redteam": "tsx redteam/run.ts",
+    "demo:spine": "tsx --env-file=.env src/demo/spine.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
