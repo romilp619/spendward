@@ -10,11 +10,11 @@
     "redteam": "tsx --env-file=.env redteam/run.ts",
     "demo:spine": "tsx --env-file=.env src/demo/spine.ts",
     "mint": "tsx --env-file=.env src/cli/mint-mandate.ts",
-    "mcp": "tsx --env-file=.env src/mcp/server.ts",
+    "mcp": "PAYGUARD_MANDATE=src/mandates/demo.json tsx --env-file=.env src/mcp/server.ts",
     "demo:mcp": "tsx --env-file=.env src/demo/mcp-client.ts",
     "audit:verify": "tsx --env-file=.env src/cli/verify-audit.ts",
     "agent": "tsx --env-file=.env src/agent/shopper.ts",
-    "web": "tsx --env-file=.env src/web/server.ts"
+    "web": "PAYGUARD_MANDATE=src/mandates/demo.json tsx --env-file=.env src/web/server.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

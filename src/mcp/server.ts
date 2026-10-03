@@ -63,6 +63,9 @@ async function guarded<T>(
   act: () => Promise<T>,
   describe: (result: T) => string,
 ) {
+  // Tools that move no money still need their grant checked, so they are
+  // evaluated against a zero-value probe. The probe is never recorded -- the
+  // audit trail would otherwise show a USD 0.00 payment that never existed.
   const probe: PaymentRequest = request ?? {
     tool,
     amount: 0,
@@ -77,7 +80,7 @@ async function guarded<T>(
   const decision = evaluate(mandate, probe, { spent: spentUnder(mandate.mandate.id) });
 
   if (decision.outcome !== "ALLOW") {
-    record({ agent, tool, decision, request: probe, paypalOrderId: null });
+    record({ agent, tool, decision, request, paypalOrderId: null });
     // An escalation is parked for the principal. PayPal is not contacted either
     // way until they decide.
     const pending =
@@ -92,7 +95,7 @@ async function guarded<T>(
     typeof result === "object" && result !== null && "id" in result
       ? String((result as { id: unknown }).id)
       : null;
-  record({ agent, tool, decision, request: probe, paypalOrderId: orderId });
+  record({ agent, tool, decision, request, paypalOrderId: orderId });
 
   return { content: [{ type: "text" as const, text: describe(result) }] };
 }
