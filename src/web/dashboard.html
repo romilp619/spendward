@@ -220,7 +220,7 @@ function paint() {
 
   const ev = state.events ?? [];
   document.getElementById("events").innerHTML = ev.length === 0
-    ? `<p class="sub" style="margin:0">No webhook events yet. Set PUBLIC_URL and register the webhook with PayPal to receive them.</p>`
+    ? `<p class="sub" style="margin:0">Nothing from PayPal yet. Events arrive here once a payment is approved or captured.</p>`
     : `<table style="width:100%;border-collapse:collapse;font-size:14px">
          ${ev.map(e => `
            <tr style="border-bottom:1px solid var(--line)">

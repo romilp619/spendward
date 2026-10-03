@@ -1,66 +1,68 @@
 # Demo video script
 
-Target: under 3 minutes. ~370 words of narration, which leaves room for silence
-while things happen on screen. Generate the audio first, then record the screen
-while listening to it, so clicks land on the words describing them.
+Under 3 minutes. ~360 words of narration, leaving room for silence while things
+happen on screen. Generate the audio first, then record the screen while
+listening to it so clicks land on the words describing them.
 
-Reset before every take: `npm run demo`
+**Before every take:** start the tunnel, start `npm run web`, open
+localhost:3000, then run `npm run demo`.
 
 ---
 
-## 0:00 – 0:18 · The problem
+## 0:00 – 0:20 · The problem
 
-> **[screen: PayPal's agent tools reference, scrolled to show the tool list]**
+> **[screen: PayPal's agent tools reference, the tool list visible]**
 
-PayPal's agent toolkit gives an AI agent forty-six tools.
-Create refund. Cancel subscription. Accept dispute claim.
+PayPal's agent toolkit gives an A I agent forty-six tools. Create refund.
+Cancel subscription. Accept dispute claim.
 
 *(pause)*
 
-Connect an agent to it, and it can call all of them.
+Connect an agent, and it can call every one of them.
 
 There is no way to say: buy one pair of headphones, under two hundred fifty
 dollars, from this one shop.
 
 ---
 
-## 0:18 – 0:34 · What PayGuard is
+## 0:20 – 0:36 · What PayGuard is
 
-> **[screen: the PayGuard dashboard, idle]**
+> **[screen: the dashboard, freshly reset]**
 
 That sentence only exists between you and your agent. It never reaches PayPal,
 so PayPal cannot enforce it.
 
-PayGuard can. It sits between the agent and PayPal, and it only lets through
-what you actually signed off on.
+PayGuard can. It sits between the agent and PayPal and passes through only what
+you actually authorized.
 
 ---
 
-## 0:34 – 1:05 · The normal case
+## 0:36 – 1:00 · The agent behaves perfectly
 
-> **[screen: terminal, `npm run demo`, first block only]**
+> **[screen: terminal, `npm run demo`, first block. Dashboard visible alongside.]**
 
-The agent asks to buy headphones. Two hundred nineteen dollars, from TechStore,
-one unit. That is inside the mandate, so PayGuard passes it to PayPal and a real
-order comes back.
+A real agent, searching a real catalogue. It finds the Sony headphones, two
+hundred nineteen dollars, and orders them.
 
-> **[screen: dashboard, the allowed row appears]**
+Inside the mandate. PayGuard passes it to PayPal, and a real order comes back.
 
-Normal purchases are not the interesting part. These are.
+*(pause)*
+
+Now watch what happens when the agent does nothing wrong at all.
 
 ---
 
-## 1:05 – 1:30 · The block  ← the moment that matters
+## 1:00 – 1:25 · Blocked  ← the moment that matters
 
-> **[screen: terminal, the refused block. Hold on the violation list.]**
+> **[screen: terminal, the Sennheiser refusal. Hold on the red text.]**
 
-The same agent, manipulated by a product listing, asks for three units and
-sends the money somewhere else entirely.
+The agent is asked for a different pair. It searches honestly, finds them, and
+orders them. Four hundred forty nine dollars.
 
-*(pause — let the red text sit)*
+*(pause)*
 
-PayGuard refuses. Wrong recipient. Too many units. Four hundred seven dollars
-over the limit.
+Refused. Nearly two hundred dollars over the limit, and above the ceiling, so
+no approval can rescue it.
 
 > **[screen: dashboard, click the blocked row, open the investigation panel]**
 
@@ -68,44 +70,47 @@ And PayPal was never called. Not a failed payment. No payment at all.
 
 ---
 
-## 1:30 – 1:50 · Tool escalation
+## 1:25 – 1:45 · A tool it was never given
 
 > **[screen: terminal, the create_refund refusal]**
 
-The agent then reaches for refunds — a tool it was never granted.
+Then the agent is asked for a refund.
 
-Refused. Its mandate covers buying. Nothing else.
+It has the capture id. It knows exactly what to do. Refused anyway — refunds
+were never in its grant.
 
 ---
 
-## 1:50 – 2:25 · Approval and settlement
+## 1:45 – 2:20 · Approval and settlement
 
 > **[screen: dashboard approval card → Approve once → PayPal checkout → Complete Purchase → return page]**
 
-Two hundred eighty nine dollars is over the limit, but within the ceiling you
+Two hundred eighty nine dollars is over the limit but within the ceiling you
 set. So PayGuard does not refuse it. It asks you.
 
 You approve. The buyer pays at PayPal.
 
 *(pause)*
 
-And PayPal's own signed confirmation comes back, so PayGuard settles it
-automatically. Two seconds, no second click.
+PayPal's own signed confirmation comes back, and PayGuard settles it
+automatically. Two seconds. No second click.
 
 ---
 
-## 2:25 – 2:45 · The evidence
+## 2:20 – 2:40 · The record
 
-> **[screen: dashboard, webhook events with verified badges, then the audit chain card]**
+> **[screen: webhook events with verified badges, then the audit chain card]**
 
-Every decision is recorded and hash-chained. Change one row and the chain
-breaks.
+Two independent records that agree. What PayGuard decided, and what PayPal says
+happened.
+
+Every decision is hash chained. Change one row and the chain breaks.
 
 > **[screen: terminal, `npm run audit:verify` showing CHAIN BROKEN]**
 
 ---
 
-## 2:45 – 3:00 · The benchmark
+## 2:40 – 3:00 · The benchmark
 
 > **[screen: RESULTS.md table]**
 
@@ -122,12 +127,24 @@ You cannot know which way your model will go. That is the point.
 
 ## Production notes
 
-- **Audio first.** Generate per-beat clips, not one long file, so a rewrite
-  costs one clip.
-- **Burn in captions.** The script is the caption text, and three of the judges
-  work on accessibility.
-- **No order IDs in narration** — text-to-speech mangles them. Let the screen
+- **Audio first**, per beat, not one long file.
+- **Burn in captions.** The script is the caption text, and three judges work on
+  accessibility.
+- **No order ids in narration** -- text to speech mangles them. Let the screen
   show them.
 - **Large terminal font.** Judges watch on laptops.
 - **No music**, or a quiet CC0 bed. The rules forbid copyrighted audio.
-- Rehearse the whole run five times before recording. You will find bugs.
+- **Say "A I" not "AI"** in the script you feed the voice, or it may read it as
+  a word.
+- Rehearse five times before recording.
+
+## Why this framing
+
+The agent is never the villain. It searches honestly, reports accurately, and
+refuses to work around its limits. Four of the five refusals happen because the
+*product* breaches the mandate, not because the agent misbehaved.
+
+That is the realistic case -- most breaches are overspending, not attacks -- and
+it is also the reliable one. The benchmark found injection susceptibility varies
+from one in six to four in six across models, while these outcomes held on every
+model tested.
