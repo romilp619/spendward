@@ -173,8 +173,45 @@ app.post("/paypal/webhook", async (c) => {
   });
 
   console.log(`[webhook] ${verified}  ${event.event_type ?? "?"}  ${event.resource?.id ?? ""}`);
+
+  // Settle approved orders without a second human action. The principal has
+  // already decided, and the buyer has already paid at PayPal -- capture is
+  // settlement, not another authorization.
+  //
+  // Only on a verified event. Acting on an unverified one would let anyone who
+  // can reach this endpoint trigger captures by POSTing a plausible body.
+  if (verified === "SUCCESS" && event.event_type === "CHECKOUT.ORDER.APPROVED") {
+    await autoCapture(event.resource?.id ?? null);
+  }
+
   return c.body(null, 204);
 });
+
+/**
+ * Captures an order PayPal has told us the buyer approved. PayPal retries
+ * webhooks, so this must be safe to run more than once -- the CAPTURED state
+ * is what makes a repeat delivery a no-op.
+ */
+async function autoCapture(orderId: string | null): Promise<void> {
+  if (!orderId) return;
+  const pending = listApprovals().find((a) => a.paypalOrderId === orderId);
+  if (!pending || pending.status !== "APPROVED") return;
+
+  try {
+    const result = await captureOrder(orderId);
+    record({
+      agent: pending.agent,
+      tool: "pay_order",
+      decision: { outcome: "ALLOW", violations: [], mandateId: pending.mandateId },
+      request: pending.request,
+      paypalOrderId: result.id,
+    });
+    markCaptured(pending.id);
+    console.log(`[webhook] auto-captured ${orderId} (${result.status})`);
+  } catch (err) {
+    console.log(`[webhook] auto-capture of ${orderId} failed: ${String(err)}`);
+  }
+}
 
 app.get("/paypal/return", (c) => {
   const token = c.req.query("token") ?? "";
@@ -188,7 +225,9 @@ app.get("/paypal/return", (c) => {
        <h2 style="margin:0 0 .5rem">Payment approved at PayPal</h2>
        <p style="color:#9aa7b4">Order <code>${token}</code> is ready to capture.</p>
        ${
-         pending
+         pending?.status === "CAPTURED"
+           ? `<p style="color:#3fb97a;font-weight:600">Captured automatically.</p>`
+           : pending
            ? `<button id="cap" style="font:inherit;font-weight:600;padding:.6rem 1.1rem;border:0;
                      border-radius:7px;background:#4d8bff;color:#fff;cursor:pointer">Capture payment</button>
               <p id="out" role="status" style="color:#9aa7b4"></p>
