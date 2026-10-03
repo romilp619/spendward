@@ -127,6 +127,21 @@ app.post("/api/approvals/:id/reject", (c) => {
  * is trusted. Without it the event is accepted but flagged, because an
  * unverified webhook is an unauthenticated POST from anyone.
  */
+/**
+ * PayPal's dashboard form silently drops the path from a webhook URL, so a
+ * webhook saved there arrives at the site root instead of the endpoint. Rather
+ * than rely on the registration staying correct, accept deliveries at both.
+ */
+app.post("/", (c) => app.fetch(
+  new Request(new URL("/paypal/webhook", c.req.url), {
+    method: "POST",
+    headers: c.req.raw.headers,
+    body: c.req.raw.body,
+    // @ts-expect-error -- node fetch requires this for a streamed body
+    duplex: "half",
+  }),
+));
+
 app.post("/paypal/webhook", async (c) => {
   const raw = await c.req.text();
   const webhookId = process.env.PAYPAL_WEBHOOK_ID;
