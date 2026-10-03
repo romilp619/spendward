@@ -12,6 +12,7 @@ import { entries, verifyChain, record, spentUnder } from "../lib/audit.js";
 import { list as listApprovals, get as getApproval, decide, markCaptured } from "../lib/approvals.js";
 import { createOrder, captureOrder, getAccessToken } from "../lib/paypal.js";
 import type { SignedMandate } from "../lib/mandate.js";
+import { recordEvent, recentEvents } from "../lib/events.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -48,6 +49,7 @@ app.get("/api/state", (c) => {
     audit: entries(),
     approvals: listApprovals(),
     chain: verifyChain(),
+    events: recentEvents(),
   });
 });
 
@@ -156,7 +158,20 @@ app.post("/paypal/webhook", async (c) => {
     verified = body.verification_status ?? "UNKNOWN";
   }
 
-  const event = JSON.parse(raw) as { event_type?: string; resource?: { id?: string } };
+  const event = JSON.parse(raw) as {
+    event_type?: string;
+    summary?: string;
+    resource?: { id?: string };
+  };
+
+  recordEvent({
+    at: new Date().toISOString(),
+    type: event.event_type ?? "UNKNOWN",
+    resourceId: event.resource?.id ?? null,
+    verification: verified,
+    summary: event.summary ?? null,
+  });
+
   console.log(`[webhook] ${verified}  ${event.event_type ?? "?"}  ${event.resource?.id ?? ""}`);
   return c.body(null, 204);
 });

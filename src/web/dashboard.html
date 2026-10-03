@@ -117,6 +117,11 @@
     <div class="pending" id="pending"></div>
   </section>
 
+  <section aria-labelledby="events-h">
+    <h2 id="events-h">What PayPal says happened</h2>
+    <div class="pending" id="events"></div>
+  </section>
+
   <section aria-labelledby="audit-h">
     <h2 id="audit-h">Audit trail</h2>
     <div class="toolbar">
@@ -212,6 +217,22 @@ function paint() {
           <button data-reject="${p.id}">Reject</button>
         </div>
       </article>`).join("");
+
+  const ev = state.events ?? [];
+  document.getElementById("events").innerHTML = ev.length === 0
+    ? `<p class="sub" style="margin:0">No webhook events yet. Set PUBLIC_URL and register the webhook with PayPal to receive them.</p>`
+    : `<table style="width:100%;border-collapse:collapse;font-size:14px">
+         ${ev.map(e => `
+           <tr style="border-bottom:1px solid var(--line)">
+             <td style="padding:7px 0;color:var(--muted);white-space:nowrap">${when(e.at)}</td>
+             <td style="padding:7px 10px"><code>${esc(e.type)}</code></td>
+             <td style="padding:7px 10px;color:var(--muted)">${esc(e.resourceId) || ""}</td>
+             <td style="padding:7px 0;text-align:right">${
+               e.verification === "SUCCESS"
+                 ? `<span class="badge allow">verified</span>`
+                 : `<span class="badge block">${esc(e.verification)}</span>`}</td>
+           </tr>`).join("")}
+       </table>`;
 
   grid?.setGridOption("rowData", a);
 }
