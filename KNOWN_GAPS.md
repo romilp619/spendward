@@ -49,3 +49,13 @@ without re-running the policy. The approval is recorded as spend, so the
 cumulative cap sees it and constrains everything after -- but if the mandate
 changed, or a different payment was approved in between, the approved request
 is not checked again against the current state.
+
+## The capture guard is not atomic
+
+Capture checks the approval's status, calls PayPal, then marks it captured.
+Two clicks landing at the same moment can both pass the check before either
+writes. PayPal itself refuses the second capture, so money moves once -- but
+PayGuard's own log can gain a duplicate entry.
+
+The approvals file is read-modify-write with no locking, which is the same
+weakness as the spend ledger. Both want a transactional store.
