@@ -195,6 +195,7 @@ npm run mint                 # issue a signed mandate
 npm run demo:spine           # policy gating a real PayPal order
 npm run demo:mcp             # the same, driven through MCP
 npm run agent -- "Buy me the Sony headphones from TechStore"
+npm run reset                # clear the audit trail and parked approvals
 npm run redteam              # the benchmark
 npm run audit:verify         # walk the hash chain
 ```

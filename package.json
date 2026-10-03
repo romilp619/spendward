@@ -14,7 +14,9 @@
     "demo:mcp": "tsx --env-file=.env src/demo/mcp-client.ts",
     "audit:verify": "tsx --env-file=.env src/cli/verify-audit.ts",
     "agent": "tsx --env-file=.env src/agent/shopper.ts",
-    "web": "PAYGUARD_MANDATE=src/mandates/demo.json tsx --env-file=.env src/web/server.ts"
+    "web": "PAYGUARD_MANDATE=src/mandates/demo.json tsx --env-file=.env src/web/server.ts",
+    "reset": "./scripts/reset.sh",
+    "demo": "./scripts/reset.sh && npm run demo:mcp"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
