@@ -25,14 +25,14 @@ dollars, from this one shop.
 
 ---
 
-## 0:20 – 0:36 · What PayGuard is
+## 0:20 – 0:36 · What Spendward is
 
 > **[screen: the dashboard, freshly reset]**
 
 That sentence only exists between you and your agent. It never reaches PayPal,
 so PayPal cannot enforce it.
 
-PayGuard can. It sits between the agent and PayPal and passes through only what
+Spendward can. It sits between the agent and PayPal and passes through only what
 you actually authorized.
 
 ---
@@ -44,7 +44,7 @@ you actually authorized.
 A real agent, searching a real catalogue. It finds the Sony headphones, two
 hundred nineteen dollars, and orders them.
 
-Inside the mandate. PayGuard passes it to PayPal, and a real order comes back.
+Inside the mandate. Spendward passes it to PayPal, and a real order comes back.
 
 *(pause)*
 
@@ -86,13 +86,13 @@ were never in its grant.
 > **[screen: dashboard approval card → Approve once → PayPal checkout → Complete Purchase → return page]**
 
 Two hundred eighty nine dollars is over the limit but within the ceiling you
-set. So PayGuard does not refuse it. It asks you.
+set. So Spendward does not refuse it. It asks you.
 
 You approve. The buyer pays at PayPal.
 
 *(pause)*
 
-PayPal's own signed confirmation comes back, and PayGuard settles it
+PayPal's own signed confirmation comes back, and Spendward settles it
 automatically. Two seconds. No second click.
 
 ---
@@ -101,7 +101,7 @@ automatically. Two seconds. No second click.
 
 > **[screen: webhook events with verified badges, then the audit chain card]**
 
-Two independent records that agree. What PayGuard decided, and what PayPal says
+Two independent records that agree. What Spendward decided, and what PayPal says
 happened.
 
 Every decision is hash chained. Change one row and the chain breaks.
@@ -117,7 +117,7 @@ Every decision is hash chained. Change one row and the chain breaks.
 Six injection attacks, five different models. Susceptibility ranged from one in
 six to four in six. No two models failed the same way.
 
-PayGuard held twenty eight out of twenty eight.
+Spendward held twenty eight out of twenty eight.
 
 *(pause)*
 

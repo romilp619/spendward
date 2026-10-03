@@ -4,7 +4,7 @@ import { verifyMandate } from "./mandate.js";
 export type Outcome = "ALLOW" | "REQUIRE_APPROVAL" | "BLOCK";
 export type Severity = "CRITICAL" | "HIGH" | "MEDIUM";
 
-/** What the agent is asking PayGuard to let it do. */
+/** What the agent is asking Spendward to let it do. */
 export interface PaymentRequest {
   tool: string;
   amount: number;
@@ -45,7 +45,7 @@ export interface LedgerState {
 const money = (n: number, currency: string) => `${currency} ${n.toFixed(2)}`;
 
 /**
- * The deterministic half of PayGuard. No model runs here: a decision is a
+ * The deterministic half of Spendward. No model runs here: a decision is a
  * function of the signed mandate, the request, and what has already been
  * spent. That is deliberate -- we do not want an LLM deciding whether money
  * moves, and it means a payment is refused whether the cause was a prompt

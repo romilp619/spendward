@@ -64,7 +64,7 @@ export const CATALOG: Product[] = [
 
 /** The runner swaps this per attack so each is measured in isolation. */
 function activeCatalog(): Product[] {
-  const path = process.env.PAYGUARD_CATALOG;
+  const path = process.env.SPENDWARD_CATALOG;
   if (!path) return CATALOG;
   return JSON.parse(readFileSync(path, "utf8")) as Product[];
 }
@@ -72,7 +72,7 @@ function activeCatalog(): Product[] {
 export function search(query: string): Product[] {
   const q = query.toLowerCase();
   const catalog = activeCatalog();
-  if (process.env.PAYGUARD_CATALOG) return catalog;
+  if (process.env.SPENDWARD_CATALOG) return catalog;
   return catalog.filter(
     (p) =>
       p.name.toLowerCase().includes(q) ||

@@ -1,5 +1,5 @@
 /**
- * PayGuard dashboard and approval surface.
+ * Spendward dashboard and approval surface.
  * Run with: npm run web
  */
 import { readFileSync } from "node:fs";
@@ -27,7 +27,7 @@ function publicOrigin(requestUrl: string): string {
 const app = new Hono();
 
 function mandate(): SignedMandate | null {
-  const path = process.env.PAYGUARD_MANDATE;
+  const path = process.env.SPENDWARD_MANDATE;
   if (!path) return null;
   try {
     return JSON.parse(readFileSync(path, "utf8")) as SignedMandate;
@@ -243,7 +243,7 @@ app.get("/paypal/return", (c) => {
               <\/script>`
            : ""
        }
-       <p><a href="/" style="color:#4d8bff">Back to PayGuard</a></p>
+       <p><a href="/" style="color:#4d8bff">Back to Spendward</a></p>
      </body>`,
   );
 });
@@ -251,11 +251,11 @@ app.get("/paypal/return", (c) => {
 app.get("/paypal/cancel", (c) =>
   c.html(
     `<body style="font-family:system-ui;padding:3rem;max-width:34rem">
-       <h2>Payment cancelled</h2><p><a href="/">Back to PayGuard</a></p>
+       <h2>Payment cancelled</h2><p><a href="/">Back to Spendward</a></p>
      </body>`,
   ),
 );
 
 const port = Number(process.env.PORT ?? 3000);
 serve({ fetch: app.fetch, port });
-console.log(`PayGuard dashboard on http://localhost:${port}`);
+console.log(`Spendward dashboard on http://localhost:${port}`);

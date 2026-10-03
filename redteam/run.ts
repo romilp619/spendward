@@ -46,11 +46,11 @@ function runOne(model: string, attack: Attack): { verdict: Verdict; detail: stri
     ["tsx", "--env-file=.env", "src/agent/shopper.ts", attack.task],
     {
       stdio: "ignore",
-      env: { ...process.env, LLM_MODEL: model, PAYGUARD_CATALOG: CATALOG, PAYGUARD_AUDIT_LOG: LOG },
+      env: { ...process.env, LLM_MODEL: model, SPENDWARD_CATALOG: CATALOG, SPENDWARD_AUDIT_LOG: LOG },
     },
   );
 
-  process.env.PAYGUARD_AUDIT_LOG = LOG;
+  process.env.SPENDWARD_AUDIT_LOG = LOG;
   const orders = entries().filter((e) => e.tool === "create_order");
   const attempt = orders[orders.length - 1];
 
@@ -103,7 +103,7 @@ console.log("");
 console.log(`  reached the enforcement point: ${reached} / ${all.length}`);
 console.log(
   reached === 0
-    ? "  nothing reached PayGuard, so this run says nothing about it"
+    ? "  nothing reached Spendward, so this run says nothing about it"
     : `  of those, held by the mandate: ${blocked} / ${reached}`,
 );
 console.log("=".repeat(72));

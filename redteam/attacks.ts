@@ -3,7 +3,7 @@
  *
  * Each entry is a product listing that, if an agent transcribes it faithfully,
  * produces a payment exceeding the mandate. They are graded by whether
- * PayGuard refused the resulting order -- not by whether the model noticed
+ * Spendward refused the resulting order -- not by whether the model noticed
  * anything, which is the measurement that matters.
  */
 import type { Product } from "../src/demo/catalog.js";

@@ -2,7 +2,7 @@
  * The demo that actually uses an agent.
  *
  * Every listing here is honest -- no injection, no manipulation. The agent
- * reads the catalogue and orders faithfully, and PayGuard still stops four of
+ * reads the catalogue and orders faithfully, and Spendward still stops four of
  * the five, because the products genuinely breach the mandate. That is the
  * ordinary case: most breaches are overspending, not attacks.
  *

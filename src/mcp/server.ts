@@ -1,14 +1,14 @@
 /**
- * PayGuard MCP server.
+ * Spendward MCP server.
  *
  * Mirrors the tool names and parameter shapes of PayPal's own MCP server, so
- * any MCP client can point at PayGuard instead of PayPal and nothing about the
+ * any MCP client can point at Spendward instead of PayPal and nothing about the
  * agent has to change. Every call is evaluated against the signed mandate
  * before PayPal is contacted.
  *
  * PayPal's agent toolkit exposes 46 tools, including create_refund,
  * cancel_subscription and accept_dispute_claim. An agent granted that server
- * can invoke all of them. PayGuard narrows that surface to what its principal
+ * can invoke all of them. Spendward narrows that surface to what its principal
  * actually authorized.
  */
 import { readFileSync } from "node:fs";
@@ -25,15 +25,15 @@ import { park } from "../lib/approvals.js";
 import { search } from "../demo/catalog.js";
 
 function loadMandate(): SignedMandate {
-  const path = process.env.PAYGUARD_MANDATE;
-  if (!path) throw new Error("PAYGUARD_MANDATE must point at a signed mandate file");
+  const path = process.env.SPENDWARD_MANDATE;
+  if (!path) throw new Error("SPENDWARD_MANDATE must point at a signed mandate file");
   return JSON.parse(readFileSync(path, "utf8")) as SignedMandate;
 }
 
 const mandate = loadMandate();
 const agent = mandate.mandate.agent;
 
-/** What the agent is told when PayGuard refuses. Structured so the model can
+/** What the agent is told when Spendward refuses. Structured so the model can
  *  explain the refusal to its user rather than silently retrying. */
 function refusal(decision: ReturnType<typeof evaluate>, pendingId?: string) {
   const lines = decision.violations.map(
@@ -45,7 +45,7 @@ function refusal(decision: ReturnType<typeof evaluate>, pendingId?: string) {
       {
         type: "text" as const,
         text:
-          `PayGuard ${decision.outcome === "BLOCK" ? "refused" : "escalated"} this request.\n\n` +
+          `Spendward ${decision.outcome === "BLOCK" ? "refused" : "escalated"} this request.\n\n` +
           `${lines.join("\n")}\n\n` +
           (decision.outcome === "REQUIRE_APPROVAL"
             ? `The principal has been asked to approve it (request ${pendingId}). ` +
@@ -100,10 +100,10 @@ async function guarded<T>(
   return { content: [{ type: "text" as const, text: describe(result) }] };
 }
 
-const server = new McpServer({ name: "payguard", version: "0.1.0" });
+const server = new McpServer({ name: "spendward", version: "0.1.0" });
 
 // --- Product search ----------------------------------------------------------
-// Untrusted content enters the agent here. PayGuard returns listing text
+// Untrusted content enters the agent here. Spendward returns listing text
 // verbatim rather than sanitizing it: the whole point is that the enforcement
 // point does not depend on recognizing a malicious description.
 server.registerTool(
@@ -137,7 +137,7 @@ server.registerTool(
 );
 
 // --- Orders -----------------------------------------------------------------
-// Mirrors PayPal's create_order. merchant/category/payee are PayGuard
+// Mirrors PayPal's create_order. merchant/category/payee are Spendward
 // additions: PayPal's schema carries no field identifying who is being paid,
 // so there is nothing for a mandate to check against without them.
 server.registerTool(
@@ -232,7 +232,7 @@ server.registerTool(
 );
 
 // --- Tools present so they can be refused ------------------------------------
-// These exist on PayPal's MCP server. PayGuard exposes them so an agent that
+// These exist on PayPal's MCP server. Spendward exposes them so an agent that
 // reaches for one gets a mandate refusal rather than a missing-tool error,
 // which is both more honest and more useful to the model.
 server.registerTool(

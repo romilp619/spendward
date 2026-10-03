@@ -2,7 +2,7 @@ import { appendFileSync, readFileSync, existsSync } from "node:fs";
 
 /**
  * A webhook PayPal sent us. Kept separately from the audit log: the audit log
- * records what PayGuard decided, and these record what PayPal independently
+ * records what Spendward decided, and these record what PayPal independently
  * reports happened. Conflating them would let an outside party write into the
  * record of our own decisions.
  */
@@ -15,7 +15,7 @@ export interface PayPalEvent {
   summary: string | null;
 }
 
-const path = () => process.env.PAYGUARD_EVENTS ?? "paypal-events.jsonl";
+const path = () => process.env.SPENDWARD_EVENTS ?? "paypal-events.jsonl";
 
 export function recordEvent(event: PayPalEvent): void {
   appendFileSync(path(), JSON.stringify(event) + "\n");

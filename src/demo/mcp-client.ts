@@ -1,5 +1,5 @@
 /**
- * Drives the PayGuard MCP server the way a real MCP client would, so the
+ * Drives the Spendward MCP server the way a real MCP client would, so the
  * enforcement can be seen from the agent's side.
  * Run with: npm run demo:mcp
  */
@@ -9,10 +9,10 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 const transport = new StdioClientTransport({
   command: "npx",
   args: ["tsx", "--env-file=.env", "src/mcp/server.ts"],
-  env: { ...(process.env as Record<string, string>), PAYGUARD_MANDATE: "src/mandates/demo.json" },
+  env: { ...(process.env as Record<string, string>), SPENDWARD_MANDATE: "src/mandates/demo.json" },
 });
 
-const client = new Client({ name: "payguard-demo", version: "0.1.0" });
+const client = new Client({ name: "spendward-demo", version: "0.1.0" });
 await client.connect(transport);
 
 const { tools } = await client.listTools();

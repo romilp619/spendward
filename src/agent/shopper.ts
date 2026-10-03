@@ -1,7 +1,7 @@
 /**
- * A shopping agent with no knowledge of PayGuard.
+ * A shopping agent with no knowledge of Spendward.
  *
- * It connects to PayGuard's MCP server exactly as it would connect to PayPal's,
+ * It connects to Spendward's MCP server exactly as it would connect to PayPal's,
  * gets tools, and runs an ordinary tool-calling loop. Nothing here defends
  * against anything -- that is the point. The agent is the untrusted component.
  *
@@ -47,7 +47,7 @@ const task = process.argv.slice(2).join(" ") || "Buy me the Bose headphones from
 const transport = new StdioClientTransport({
   command: "npx",
   args: ["tsx", "--env-file=.env", "src/mcp/server.ts"],
-  env: { ...(process.env as Record<string, string>), PAYGUARD_MANDATE: "src/mandates/demo.json" },
+  env: { ...(process.env as Record<string, string>), SPENDWARD_MANDATE: "src/mandates/demo.json" },
 });
 const mcp = new Client({ name: "shopper-agent", version: "0.1.0" });
 await mcp.connect(transport);

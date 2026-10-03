@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="Spendward">
+  <title>Spendward</title>
+  <!-- The limit, drawn past the coin on both sides: a line set in advance,
+       not negotiated at the moment of spending. -->
+  <path d="M1.5 16h29" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+  <!-- Spend so far, filling from the bottom toward the line. -->
+  <path d="M3.2 16a12.8 12.8 0 0 0 25.6 0Z" fill="currentColor" opacity=".22"/>
+  <!-- The mandate. -->
+  <circle cx="16" cy="16" r="12.8" stroke="currentColor" stroke-width="2.6"/>
+</svg>

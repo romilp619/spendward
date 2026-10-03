@@ -84,7 +84,7 @@ export async function createOrder(draft: OrderDraft): Promise<Order> {
             return_url: draft.returnUrl,
             cancel_url: draft.cancelUrl,
             user_action: "PAY_NOW",
-            brand_name: "PayGuard Demo",
+            brand_name: "Spendward Demo",
           },
         },
       },

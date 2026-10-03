@@ -1,4 +1,6 @@
-# PayGuard
+<img src="docs/logo.svg" width="56" alt="">
+
+# Spendward
 
 **An authorization firewall between AI agents and PayPal. An agent can only spend what its owner actually signed off on.**
 
@@ -23,12 +25,12 @@ never reaches PayPal, so PayPal cannot enforce it. PayPal's own controls —
 `allowed_agents` lists, rate limits, replay protection — answer *"is this caller
 legitimate?"*. None of them answer *"is this what the human asked for?"*
 
-PayGuard answers that second question.
+Spendward answers that second question.
 
 > PayPal's protections protect PayPal and the merchant.
-> PayGuard protects the buyer from their own agent.
+> Spendward protects the buyer from their own agent.
 
-![PayGuard dashboard: mandate limits, spend against them, the audit trail with one allowed payment, two refused and one escalated, and PayPal's own signed confirmations alongside](docs/dashboard.png)
+![Spendward dashboard: mandate limits, spend against them, the audit trail with one allowed payment, two refused and one escalated, and PayPal's own signed confirmations alongside](docs/dashboard.png)
 
 ## What it does
 
@@ -48,8 +50,8 @@ You grant an agent a **signed mandate** instead of credentials:
 }
 ```
 
-PayGuard runs as an **MCP server that mirrors PayPal's tool names**, so any MCP
-client points at PayGuard instead of PayPal and nothing about the agent changes.
+Spendward runs as an **MCP server that mirrors PayPal's tool names**, so any MCP
+client points at Spendward instead of PayPal and nothing about the agent changes.
 Every call is evaluated against the mandate before PayPal is contacted.
 
 Three outcomes:
@@ -96,7 +98,7 @@ Nine scenarios, five models, 45 agent runs against the live PayPal sandbox.
 ```
 
 **Model susceptibility ranged from 1-in-6 to 4-in-6, and no two models failed on
-the same set. PayGuard held 28 of 28.**
+the same set. Spendward held 28 of 28.**
 
 Two findings worth stating plainly:
 
@@ -123,7 +125,7 @@ Full detail in [RESULTS.md](RESULTS.md). Limitations in [KNOWN_GAPS.md](KNOWN_GA
   you ──── "buy headphones under $250" ────┐
                                            │  signed mandate (HMAC, never seen by the agent)
                                            ▼
-  agent ──── MCP tool call ────────▶  PayGuard
+  agent ──── MCP tool call ────────▶  Spendward
   (untrusted)                            │
                                          ├── verify mandate signature
                                          ├── evaluate 9 deterministic rules
@@ -151,8 +153,8 @@ purchase asks permission but a redirected payment never does.
 ### Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/payguard.git
-cd payguard
+git clone https://github.com/YOUR_USERNAME/spendward.git
+cd spendward
 npm install
 ```
 
@@ -202,10 +204,10 @@ npm run audit:verify         # walk the hash chain
 
 ### Webhooks (optional)
 
-PayPal confirms what actually happened independently of what PayGuard decided.
+PayPal confirms what actually happened independently of what Spendward decided.
 Those confirmations are kept in their own log and shown separately in the
 dashboard -- merging them into the audit trail would let an outside party write
-into the record of PayGuard's own decisions.
+into the record of Spendward's own decisions.
 
 PayPal needs a public URL, so expose the server:
 
@@ -232,17 +234,17 @@ POST from anyone.
 ```json
 {
   "mcpServers": {
-    "payguard": {
+    "spendward": {
       "command": "npx",
       "args": ["tsx", "--env-file=.env", "src/mcp/server.ts"],
-      "cwd": "/absolute/path/to/payguard",
-      "env": { "PAYGUARD_MANDATE": "src/mandates/demo.json" }
+      "cwd": "/absolute/path/to/spendward",
+      "env": { "SPENDWARD_MANDATE": "src/mandates/demo.json" }
     }
   }
 }
 ```
 
-The agent sees PayPal's tool names and never learns PayGuard exists.
+The agent sees PayPal's tool names and never learns Spendward exists.
 
 ## Things to try
 
@@ -285,7 +287,7 @@ defines signed Intent, Cart and Payment Mandates as W3C Verifiable Credentials,
 with PayPal among its 60+ partners. AP2 specifies the *format* of user intent and
 governs the payment-network leg.
 
-PayGuard is an enforcement point for the **agent-to-API leg** — before a payment
+Spendward is an enforcement point for the **agent-to-API leg** — before a payment
 request is formed at all — and works today against PayPal's existing MCP server.
 The mandate here is deliberately AP2-shaped so the two compose.
 

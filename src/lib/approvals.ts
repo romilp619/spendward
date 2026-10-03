@@ -21,7 +21,7 @@ export interface PendingApproval {
   approveUrl: string | null;
 }
 
-const path = () => process.env.PAYGUARD_APPROVALS ?? "approvals.json";
+const path = () => process.env.SPENDWARD_APPROVALS ?? "approvals.json";
 
 function readAll(): PendingApproval[] {
   const p = path();

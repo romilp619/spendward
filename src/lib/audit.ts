@@ -25,7 +25,7 @@ export interface AuditEntry {
 }
 
 const GENESIS = "0".repeat(64);
-const path = () => process.env.PAYGUARD_AUDIT_LOG ?? "audit.jsonl";
+const path = () => process.env.SPENDWARD_AUDIT_LOG ?? "audit.jsonl";
 
 function digest(entry: Omit<AuditEntry, "hash">): string {
   return createHash("sha256").update(JSON.stringify(entry)).digest("hex");
