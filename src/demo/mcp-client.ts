@@ -22,7 +22,10 @@ async function call(label: string, name: string, args: Record<string, unknown>) 
   console.log(`\n=== ${label} ===`);
   const r = await client.callTool({ name, arguments: args });
   const content = r.content as Array<{ type: string; text?: string }>;
-  console.log(r.isError ? "REFUSED" : "ALLOWED");
+  const text = content.map((c) => c.text ?? "").join("\n");
+  // An escalation comes back as an error so the agent stops, but calling it
+  // "refused" on screen contradicts the message right underneath it.
+  console.log(!r.isError ? "ALLOWED" : text.includes("escalated") ? "ESCALATED" : "REFUSED");
   for (const c of content) if (c.text) console.log(c.text);
 }
 
