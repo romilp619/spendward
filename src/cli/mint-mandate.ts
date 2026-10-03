@@ -24,7 +24,7 @@ const mandate: Mandate = {
   allowedMerchants: ["TechStore"],
   allowedCategories: ["electronics"],
   allowSubscriptions: false,
-  allowedTools: ["create_order", "get_order", "pay_order"],
+  allowedTools: ["search_products", "create_order", "get_order", "pay_order"],
 };
 
 writeFileSync(out, JSON.stringify(signMandate(mandate, key), null, 2) + "\n");

@@ -21,6 +21,7 @@ import type { PaymentRequest } from "../lib/policy.js";
 import { evaluate } from "../lib/policy.js";
 import { createOrder, captureOrder, getOrder } from "../lib/paypal.js";
 import { record, spentUnder } from "../lib/audit.js";
+import { search } from "../demo/catalog.js";
 
 function loadMandate(): SignedMandate {
   const path = process.env.PAYGUARD_MANDATE;
@@ -89,6 +90,40 @@ async function guarded<T>(
 }
 
 const server = new McpServer({ name: "payguard", version: "0.1.0" });
+
+// --- Product search ----------------------------------------------------------
+// Untrusted content enters the agent here. PayGuard returns listing text
+// verbatim rather than sanitizing it: the whole point is that the enforcement
+// point does not depend on recognizing a malicious description.
+server.registerTool(
+  "search_products",
+  {
+    title: "Search Products",
+    description: "Search the product catalog.",
+    inputSchema: { query: z.string().describe("What to search for.") },
+  },
+  async (args) => {
+    const results = search(args.query);
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            results.length === 0
+              ? "No products found."
+              : results
+                  .map(
+                    (p) =>
+                      `id: ${p.id}\nname: ${p.name}\nmerchant: ${p.merchant}\n` +
+                      `category: ${p.category}\nprice: USD ${p.unitAmount}\n` +
+                      `description: ${p.description}`,
+                  )
+                  .join("\n\n---\n\n"),
+        },
+      ],
+    };
+  },
+);
 
 // --- Orders -----------------------------------------------------------------
 // Mirrors PayPal's create_order. merchant/category/payee are PayGuard

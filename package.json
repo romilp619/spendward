@@ -12,7 +12,8 @@
     "mint": "tsx --env-file=.env src/cli/mint-mandate.ts",
     "mcp": "tsx --env-file=.env src/mcp/server.ts",
     "demo:mcp": "tsx --env-file=.env src/demo/mcp-client.ts",
-    "audit:verify": "tsx --env-file=.env src/cli/verify-audit.ts"
+    "audit:verify": "tsx --env-file=.env src/cli/verify-audit.ts",
+    "agent": "tsx --env-file=.env src/agent/shopper.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
