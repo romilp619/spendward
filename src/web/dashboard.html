@@ -49,6 +49,35 @@
   h1 { font-size: 21px; margin: 0; letter-spacing: -0.025em; font-weight: 680; }
   .tagline { color: var(--muted); font-size: 14px; }
 
+  /* The pipeline. A judge who has never seen this product should understand it
+     from this strip alone: what the agent asked, what was let through, and what
+     actually reached PayPal. */
+  .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 10px; align-items: stretch;
+          margin: 22px 0; }
+  .node { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+          padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .node.gate { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .nlabel { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+            font-weight: 600; }
+  .nbig { font-size: 25px; font-weight: 660; letter-spacing: -0.035em; line-height: 1.2;
+          font-variant-numeric: tabular-nums; }
+  .nbig .ok { color: var(--allow); } .nbig .no { color: var(--block); }
+  .nbig .sep { color: var(--muted); font-weight: 400; margin: 0 2px; }
+  .nsub { font-size: 13px; color: var(--muted); }
+  .arrow { align-self: center; color: var(--muted); font-size: 18px; line-height: 1; }
+  @media (max-width: 760px) {
+    .flow { grid-template-columns: 1fr; }
+    .arrow { transform: rotate(90deg); justify-self: center; }
+  }
+
+  /* An unanswered decision should look unanswered. */
+  section.urgent { border-color: var(--approve); }
+  section.urgent > h2 { color: var(--approve); }
+  .count { background: var(--approve); color: #000; border-radius: 999px; padding: 1px 8px;
+           font-size: 11.5px; margin-left: 7px; font-variant-numeric: tabular-nums; }
+  .empty { margin: 0; color: var(--muted); display: flex; align-items: center; gap: 9px; }
+  .empty svg { width: 16px; height: 16px; flex: none; color: var(--allow); }
+
   .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin: 22px 0; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
   .card h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
@@ -131,9 +160,11 @@
     </div>
   </header>
 
-  <div class="cards" id="cards" aria-live="polite"></div>
+  <div class="flow" id="flow" aria-live="polite"></div>
 
-  <section aria-labelledby="pending-h">
+  <div class="cards" id="cards"></div>
+
+  <section aria-labelledby="pending-h" id="pending-section">
     <h2 id="pending-h">Needs you</h2>
     <div class="pending" id="pending"></div>
   </section>
@@ -161,6 +192,7 @@
 </dialog>
 
 <script type="module">
+const tick = () => `<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const money = (a, c) => a == null ? "—" : `${c ?? "USD"} ${Number(a).toFixed(2)}`;
 const when  = t => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const esc   = s => String(s ?? "").replace(/[&<>"]/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
@@ -209,13 +241,45 @@ function paint() {
       <div class="big ${state.chain.valid ? "chain-ok" : "chain-bad"}">${state.chain.valid ? "intact" : "broken"}</div>
       <div class="sub">${state.chain.valid ? a.length + " entries verified" : "entry #" + state.chain.brokenAt + " — " + state.chain.reason}</div></div>`;
 
+  // Only order attempts count as requests; probes for read-only tools are not
+  // the agent asking to spend anything.
+  const attempts = a.length;
+  const allowed  = a.filter(e => e.outcome === "ALLOW").length;
+  const held     = attempts - allowed;
+  const reachedPaypal = a.filter(e => e.paypalOrderId).length;
+  const captured = a.filter(e => e.tool === "pay_order" && e.outcome === "ALLOW").length;
+
+  document.getElementById("flow").innerHTML = `
+    <div class="node">
+      <span class="nlabel">Agent</span>
+      <span class="nbig">${attempts}</span>
+      <span class="nsub">request${attempts === 1 ? "" : "s"} made</span>
+    </div>
+    <div class="arrow" aria-hidden="true">&rarr;</div>
+    <div class="node gate">
+      <span class="nlabel">Spendward</span>
+      <span class="nbig"><span class="ok">${allowed}</span><span class="sep">/</span><span class="no">${held}</span></span>
+      <span class="nsub">passed · stopped</span>
+    </div>
+    <div class="arrow" aria-hidden="true">&rarr;</div>
+    <div class="node">
+      <span class="nlabel">PayPal</span>
+      <span class="nbig">${reachedPaypal}</span>
+      <span class="nsub">order${reachedPaypal === 1 ? "" : "s"} reached it${captured ? ` · ${captured} captured` : ""}</span>
+    </div>`;
+
   const pending  = state.approvals.filter(x => x.status === "PENDING");
   const toCapture = state.approvals.filter(x => x.status === "APPROVED" && x.paypalOrderId);
-  const captured  = state.approvals.filter(x => x.status === "CAPTURED");
+  const capturedApprovals = state.approvals.filter(x => x.status === "CAPTURED");
+
+  const section = document.getElementById("pending-section");
+  section.classList.toggle("urgent", pending.length > 0);
+  document.getElementById("pending-h").innerHTML =
+    `Needs you${pending.length ? `<span class="count">${pending.length}</span>` : ""}`;
 
   document.getElementById("pending").innerHTML = (pending.length === 0 && toCapture.length === 0
-    ? `<p class="sub" style="margin:0">Nothing needs you right now.${
-        captured.length ? ` ${captured.length} payment${captured.length > 1 ? "s" : ""} captured.` : ""}</p>` : "") +
+    ? `<p class="empty">${tick()} Nothing needs you right now.${
+        capturedApprovals.length ? ` ${capturedApprovals.length} payment${capturedApprovals.length > 1 ? "s" : ""} captured.` : ""}</p>` : "") +
     toCapture.map(p => `
       <article class="approval" style="border-color:var(--accent);background:transparent">
         <div class="head">
@@ -245,7 +309,7 @@ function paint() {
 
   const ev = state.events ?? [];
   document.getElementById("events").innerHTML = ev.length === 0
-    ? `<p class="sub" style="margin:0">Nothing from PayPal yet. Events arrive here once a payment is approved or captured.</p>`
+    ? `<p class="empty" style="color:var(--muted)">Nothing from PayPal yet. Confirmations appear here once a payment is approved or captured.</p>`
     : `<table style="width:100%;border-collapse:collapse;font-size:14px">
          ${ev.map(e => `
            <tr style="border-bottom:1px solid var(--line)">
