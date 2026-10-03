@@ -30,7 +30,7 @@ Spendward answers that second question.
 > PayPal's protections protect PayPal and the merchant.
 > Spendward protects the buyer from their own agent.
 
-![Spendward dashboard: mandate limits, spend against them, the audit trail with one allowed payment, two refused and one escalated, and PayPal's own signed confirmations alongside](docs/dashboard.png)
+![Spendward dashboard: the pipeline strip showing seven agent requests, three passed and four stopped, three reaching PayPal; mandate limits and spend against them; and the audit trail with PayPal's own signed confirmations alongside](docs/dashboard.png)
 
 ## What it does
 

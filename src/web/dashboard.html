@@ -213,8 +213,14 @@ const columns = [
   { headerName: "Merchant", field: "merchant", width: 135, valueFormatter: p => p.value ?? "—" },
   { headerName: "Decision", field: "outcome", width: 125,
     cellRenderer: p => badge(p.value), cellStyle: { display: "flex", alignItems: "center" } },
-  { headerName: "Rules triggered", flex: 1, minWidth: 220,
-    valueGetter: p => p.data.violations.map(v => v.rule).join(", ") || "—" },
+  { headerName: "Rules triggered", flex: 1, minWidth: 240,
+    // An allowed row carrying violations is one the principal approved. Showing
+    // the bare rule name there reads as a contradiction.
+    valueGetter: p => {
+      const rules = p.data.violations.map(v => v.rule).join(", ");
+      if (!rules) return "—";
+      return p.data.outcome === "ALLOW" ? `${rules} — approved by you` : rules;
+    } },
 ];
 
 function paint() {
