@@ -61,8 +61,13 @@ function toProduct(p: Channel3Product): Product | null {
   };
 }
 
+/**
+ * Live search is opt-in, not implied by holding a key. Otherwise setting a key
+ * silently changes what every demo and benchmark run searches, and the fixed
+ * catalogue -- the whole point of which is reproducibility -- stops existing.
+ */
 export function isEnabled(): boolean {
-  return Boolean(process.env.CHANNEL3_API_KEY);
+  return process.env.SPENDWARD_CATALOG === "channel3" && Boolean(process.env.CHANNEL3_API_KEY);
 }
 
 export async function search(query: string, limit = 8): Promise<Product[]> {
