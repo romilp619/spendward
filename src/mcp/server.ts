@@ -23,6 +23,7 @@ import { createOrder, captureOrder, getOrder } from "../lib/paypal.js";
 import { record, spentUnder } from "../lib/audit.js";
 import { park } from "../lib/approvals.js";
 import { search } from "../demo/catalog.js";
+import * as channel3 from "../lib/channel3.js";
 
 function loadMandate(): SignedMandate {
   const path = process.env.SPENDWARD_MANDATE;
@@ -114,7 +115,11 @@ server.registerTool(
     inputSchema: { query: z.string().describe("What to search for.") },
   },
   async (args) => {
-    const results = search(args.query);
+    // Live catalogue when a key is present, fixed one otherwise, so the
+    // benchmark stays reproducible without a network call.
+    const results = channel3.isEnabled()
+      ? await channel3.search(args.query).catch(() => search(args.query))
+      : search(args.query);
     return {
       content: [
         {
