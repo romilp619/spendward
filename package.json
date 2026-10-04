@@ -22,17 +22,21 @@
     "tunnel": "./scripts/tunnel.sh",
     "mint:live": "tsx --env-file=.env src/cli/mint-mandate.ts --live",
     "demo:live": "./scripts/reset.sh && SPENDWARD_CATALOG=channel3 SPENDWARD_MANDATE=src/mandates/live.json tsx --env-file=.env src/demo/agent-demo.ts",
-    "web:live": "SPENDWARD_CATALOG=channel3 SPENDWARD_MANDATE=src/mandates/live.json tsx --env-file=.env src/web/server.ts"
+    "web:live": "SPENDWARD_CATALOG=channel3 SPENDWARD_MANDATE=src/mandates/live.json tsx --env-file=.env src/web/server.ts",
+    "start": "tsx src/web/server.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",
     "@modelcontextprotocol/sdk": "^1.32.0",
     "hono": "^4.13.12",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "tsx": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

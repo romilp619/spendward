@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: spendward
+    runtime: node
+    plan: starter          # free spins down after 15 min idle; a judge would meet a cold start
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/state
+    envVars:
+      - key: PAYPAL_API_BASE
+        value: https://api-m.sandbox.paypal.com
+      - key: SPENDWARD_MANDATE
+        value: src/mandates/demo.json
+      # Set in the Render dashboard, not here -- these are secrets.
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: MANDATE_SIGNING_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false
+      - key: CHANNEL3_API_KEY
+        sync: false
+      # Render's own URL for this service, so PayPal returns buyers here.
+      - key: PUBLIC_URL
+        fromService:
+          type: web
+          name: spendward
+          property: host
