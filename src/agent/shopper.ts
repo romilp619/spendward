@@ -47,7 +47,8 @@ const task = process.argv.slice(2).join(" ") || "Buy me the Bose headphones from
 const transport = new StdioClientTransport({
   command: "npx",
   args: ["tsx", "--env-file=.env", "src/mcp/server.ts"],
-  env: { ...(process.env as Record<string, string>), SPENDWARD_MANDATE: "src/mandates/demo.json" },
+  env: { ...(process.env as Record<string, string>), // Respect an explicitly chosen mandate; the fixed one is only a default.
+    SPENDWARD_MANDATE: process.env.SPENDWARD_MANDATE ?? "src/mandates/demo.json" },
 });
 const mcp = new Client({ name: "shopper-agent", version: "0.1.0" });
 await mcp.connect(transport);
