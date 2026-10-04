@@ -36,6 +36,10 @@ function mandate(): SignedMandate | null {
   }
 }
 
+// Render and most platforms probe /healthz by default. Answer it so a healthy
+// service is not marked down over a missing route.
+app.get("/healthz", (c) => c.json({ ok: true }));
+
 app.get("/", (c) => c.html(readFileSync(join(here, "dashboard.html"), "utf8")));
 
 app.get("/api/state", (c) => {
