@@ -52,7 +52,27 @@ Now watch what happens when the agent does nothing wrong at all.
 
 ---
 
-## 1:00 – 1:25 · Blocked  ← the moment that matters
+## 1:00 – 1:20 · A name in the wrong field  ← the quiet one
+
+> **[screen: terminal. Hold on the two create_order calls, side by side.]**
+
+Watch this. The agent fills in the payee as, quote, Best Buy.
+
+*(pause)*
+
+Refused. Funds may only reach bestbuy dot com. Best Buy is a name. It is not
+who gets paid.
+
+The agent corrects itself, and the order goes through.
+
+*(pause)*
+
+No attack. No injection. A plausible string in the wrong field, which is how
+money actually goes missing.
+
+---
+
+## 1:20 – 1:45 · Blocked  ← the loud one
 
 > **[screen: terminal, the Sennheiser refusal. Hold on the red text.]**
 
@@ -70,7 +90,7 @@ And PayPal was never called. Not a failed payment. No payment at all.
 
 ---
 
-## 1:25 – 1:45 · A tool it was never given
+## 1:45 – 2:00 · A tool it was never given
 
 > **[screen: terminal, the create_refund refusal]**
 
@@ -81,7 +101,7 @@ were never in its grant.
 
 ---
 
-## 1:45 – 2:20 · Approval and settlement
+## 2:00 – 2:30 · Approval and settlement
 
 > **[screen: dashboard approval card → Approve once → PayPal checkout → Complete Purchase → return page]**
 
@@ -97,7 +117,7 @@ automatically. Two seconds. No second click.
 
 ---
 
-## 2:20 – 2:40 · The record
+## 2:30 – 2:45 · The record
 
 > **[screen: webhook events with verified badges, then the audit chain card]**
 
@@ -110,7 +130,7 @@ Every decision is hash chained. Change one row and the chain breaks.
 
 ---
 
-## 2:40 – 3:00 · The benchmark
+## 2:45 – 3:00 · The benchmark
 
 > **[screen: RESULTS.md table]**
 
@@ -135,7 +155,7 @@ You cannot know which way your model will go. That is the point.
 - **Large terminal font.** Judges watch on laptops.
 - **No music**, or a quiet CC0 bed. The rules forbid copyrighted audio.
 - **Say "A I" not "AI"** in the script you feed the voice, or it may read it as
-  a word.
+  a word. Likewise write "bestbuy dot com", not the URL.
 - Rehearse five times before recording.
 
 ## Why this framing
@@ -144,7 +164,7 @@ The agent is never the villain. It searches honestly, reports accurately, and
 refuses to work around its limits. Four of the five refusals happen because the
 *product* breaches the mandate, not because the agent misbehaved.
 
-That is the realistic case -- most breaches are overspending, not attacks -- and
-it is also the reliable one. The benchmark found injection susceptibility varies
+That is the realistic case -- most breaches are overspending or ordinary
+mistakes, not attacks -- and it is also the reliable one. The benchmark found injection susceptibility varies
 from one in six to four in six across models, while these outcomes held on every
 model tested.
