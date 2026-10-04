@@ -6,12 +6,18 @@
 import { writeFileSync } from "node:fs";
 import { signMandate, type Mandate } from "../lib/mandate.js";
 
-const out = process.argv[2] ?? "src/mandates/demo.json";
+/**
+ * Two presets. The fixed catalogue uses an invented merchant so the benchmark
+ * is reproducible; the live one allows a real retailer, because against
+ * Channel3's 25,000 sellers a merchant allowlist is doing real work.
+ */
+const live = process.argv.includes("--live");
+const out = process.argv.find((a) => a.endsWith(".json")) ?? (live ? "src/mandates/live.json" : "src/mandates/demo.json");
 const key = process.env.MANDATE_SIGNING_KEY;
 if (!key) throw new Error("MANDATE_SIGNING_KEY is not set");
 
 const mandate: Mandate = {
-  id: "mnd_demo_001",
+  id: live ? "mnd_live_001" : "mnd_demo_001",
   principal: "romil",
   agent: "shopper-01",
   issuedAt: new Date().toISOString(),
@@ -21,8 +27,10 @@ const mandate: Mandate = {
   maxTotalAmount: 1000,
   approvalCeiling: 300,
   maxQuantity: 1,
-  allowedMerchants: ["TechStore"],
-  allowedCategories: ["electronics"],
+  allowedMerchants: live ? ["bestbuy.com"] : ["TechStore"],
+  // Channel3 categorises by its own taxonomy, so a live mandate cannot assume
+  // the word "electronics". Category is enforced only for the fixed catalogue.
+  allowedCategories: live ? [] : ["electronics"],
   allowSubscriptions: false,
   allowedTools: ["search_products", "create_order", "get_order", "pay_order"],
 };

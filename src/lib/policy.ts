@@ -140,7 +140,9 @@ export function evaluate(
     });
   }
 
-  if (!m.allowedCategories.includes(request.category)) {
+  // An empty list means the mandate does not constrain category at all, which
+  // is different from constraining it to nothing.
+  if (m.allowedCategories.length > 0 && !m.allowedCategories.includes(request.category)) {
     v.push({
       rule: "CATEGORY_NOT_ALLOWED",
       severity: "MEDIUM",

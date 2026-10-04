@@ -19,7 +19,9 @@
     "demo": "./scripts/reset.sh && npm run demo:agent",
     "demo:agent": "tsx --env-file=.env src/demo/agent-demo.ts",
     "demo:scripted": "./scripts/reset.sh && npm run demo:mcp",
-    "tunnel": "./scripts/tunnel.sh"
+    "tunnel": "./scripts/tunnel.sh",
+    "mint:live": "tsx --env-file=.env src/cli/mint-mandate.ts --live",
+    "demo:live": "./scripts/reset.sh && SPENDWARD_MANDATE=src/mandates/live.json tsx --env-file=.env src/demo/agent-demo.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

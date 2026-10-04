@@ -1,0 +1,26 @@
+{
+  "mandate": {
+    "id": "mnd_live_001",
+    "principal": "romil",
+    "agent": "shopper-01",
+    "issuedAt": "2026-10-04T05:14:22.360Z",
+    "expiresAt": "2026-11-03T05:14:22.360Z",
+    "currency": "USD",
+    "maxTransactionAmount": 250,
+    "maxTotalAmount": 1000,
+    "approvalCeiling": 300,
+    "maxQuantity": 1,
+    "allowedMerchants": [
+      "bestbuy.com"
+    ],
+    "allowedCategories": [],
+    "allowSubscriptions": false,
+    "allowedTools": [
+      "search_products",
+      "create_order",
+      "get_order",
+      "pay_order"
+    ]
+  },
+  "signature": "aad72dae54d67b83e903f875283c6a70746a5baef46ecc93faa5649101d7fa30"
+}
