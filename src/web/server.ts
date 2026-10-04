@@ -274,3 +274,27 @@ app.get("/paypal/cancel", (c) =>
 const port = Number(process.env.PORT ?? 3000);
 serve({ fetch: app.fetch, port });
 console.log(`Spendward dashboard on http://localhost:${port}`);
+
+/**
+ * PUBLIC_URL is baked into every order as the address PayPal returns the buyer
+ * to, so a stale one strands them on a dead host after they have already paid.
+ * A tunnel hostname changes on every restart, which makes that easy to miss --
+ * so say it at startup rather than at checkout.
+ */
+void (async () => {
+  const url = process.env.PUBLIC_URL;
+  if (!url || url.includes("localhost")) return;
+  try {
+    const res = await fetch(`${url}/api/state`, { signal: AbortSignal.timeout(8000) });
+    console.log(
+      res.ok
+        ? `PUBLIC_URL ${url} is reachable`
+        : `WARNING: PUBLIC_URL ${url} answered ${res.status}. Buyers will be redirected there after paying.`,
+    );
+  } catch {
+    console.log(
+      `WARNING: PUBLIC_URL ${url} is unreachable. Buyers will be stranded there after paying.\n` +
+        `         Start a tunnel with 'npm run tunnel', or set PUBLIC_URL=http://localhost:${port}.`,
+    );
+  }
+})();
