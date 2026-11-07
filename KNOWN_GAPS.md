@@ -59,3 +59,10 @@ Spendward's own log can gain a duplicate entry.
 
 The approvals file is read-modify-write with no locking, which is the same
 weakness as the spend ledger. Both want a transactional store.
+
+## Calls refused downstream are recorded, not retried
+
+When Spendward allows a call and PayPal then rejects it -- an unknown order id,
+an order not yet approved by the buyer -- the attempt is written to the audit
+trail with PayPal's error, and counts toward nothing. Spendward does not retry
+or reconcile; the agent is told the call failed and decides what to do.

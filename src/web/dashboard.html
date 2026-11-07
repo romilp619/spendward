@@ -218,6 +218,7 @@ const columns = [
     // the bare rule name there reads as a contradiction.
     valueGetter: p => {
       const rules = p.data.violations.map(v => v.rule).join(", ");
+      if (p.data.error) return "allowed by Spendward, rejected by PayPal";
       if (!rules) return "—";
       return p.data.outcome === "ALLOW" ? `${rules} — approved by you` : rules;
     } },
@@ -348,7 +349,9 @@ function openDetail(e) {
     <dl class="row"><dt>Merchant</dt><dd>${esc(e.merchant)}</dd></dl>
     <dl class="row"><dt>Payee</dt><dd>${esc(e.recipient)}</dd></dl>
     <dl class="row"><dt>Instruction source</dt><dd>${esc(e.sourceContext) || "—"}</dd></dl>
-    <dl class="row"><dt>PayPal call</dt><dd>${e.paypalOrderId ? "<code>" + esc(e.paypalOrderId) + "</code>" : "<strong>not executed</strong>"}</dd></dl>
+    <dl class="row"><dt>PayPal call</dt><dd>${
+      e.error ? "<strong>attempted, rejected by PayPal</strong><br><code>" + esc(e.error) + "</code>"
+      : e.paypalOrderId ? "<code>" + esc(e.paypalOrderId) + "</code>" : "<strong>not executed</strong>"}</dd></dl>
     <dl class="row"><dt>Entry hash</dt><dd><code>${esc(e.hash).slice(0,32)}…</code></dd></dl>
     ${e.violations.map(v => `
       <div class="violation">

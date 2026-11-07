@@ -20,6 +20,11 @@ export interface AuditEntry {
   paypalOrderId: string | null;
   /** Where the agent's instruction came from, when it is known. */
   sourceContext: string | null;
+  /**
+   * Set when Spendward allowed the call but PayPal refused it. Such a call
+   * still belongs in the record: it was authorized and it was attempted.
+   */
+  error: string | null;
   prevHash: string;
   hash: string;
 }
@@ -51,6 +56,7 @@ export function record(input: {
   decision: Decision;
   request: PaymentRequest | null;
   paypalOrderId: string | null;
+  error?: string | null;
 }): AuditEntry {
   const existing = readAll();
   const prev = existing[existing.length - 1];
@@ -72,6 +78,7 @@ export function record(input: {
     violations: input.decision.violations,
     paypalOrderId: input.paypalOrderId,
     sourceContext: input.request?.sourceContext ?? null,
+    error: input.error ?? null,
     prevHash: prev?.hash ?? GENESIS,
   };
 
@@ -93,7 +100,8 @@ export function entries(): AuditEntry[] {
  */
 export function spentUnder(mandateId: string): number {
   return readAll()
-    .filter((e) => e.mandateId === mandateId && e.outcome === "ALLOW" && e.tool === "create_order")
+    // An order PayPal rejected committed no money, so it spends nothing.
+    .filter((e) => e.mandateId === mandateId && e.outcome === "ALLOW" && e.tool === "create_order" && !e.error)
     .reduce((sum, e) => sum + (e.amount ?? 0), 0);
 }
 

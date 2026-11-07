@@ -91,7 +91,16 @@ async function guarded<T>(
     return refusal(decision, pending?.id);
   }
 
-  const result = await act();
+  let result: T;
+  try {
+    result = await act();
+  } catch (err) {
+    // Authorized, attempted, refused downstream. Leaving this out would make
+    // the audit trail claim fewer calls were made than actually were.
+    const message = err instanceof Error ? err.message : String(err);
+    record({ agent, tool, decision, request, paypalOrderId: null, error: message.slice(0, 300) });
+    throw err;
+  }
   const orderId =
     typeof result === "object" && result !== null && "id" in result
       ? String((result as { id: unknown }).id)

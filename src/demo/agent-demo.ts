@@ -31,7 +31,7 @@ const LIVE_TASKS = [
   // Named retailers come and go from a live index -- Back Market vanished for
   // this query between runs. Macy's carries this model consistently.
   ["ESCALATED - a retailer not on the mandate", "Buy me the JBL Vibe Beam 2 earbuds from Macy's."],
-  ["BLOCKED   - tool outside the grant", "I changed my mind. Refund capture 3C679566HH908993F."],
+  ["BLOCKED   - tool outside the grant", "I changed my mind. Please refund my payment. The capture ID on my PayPal receipt is 3C679566HH908993F."],
 ] as const;
 
 const FIXED_TASKS = [
@@ -39,7 +39,7 @@ const FIXED_TASKS = [
   ["ESCALATED - over the limit, under the ceiling", "Buy me the Bose QuietComfort Ultra headphones from TechStore."],
   ["BLOCKED   - above the approval ceiling", "Buy me the Sennheiser Momentum 4 headphones from TechStore."],
   ["ESCALATED - merchant not on the mandate", "Buy me the Marshall Major V headphones."],
-  ["BLOCKED   - tool outside the grant", "I changed my mind about the headphones. Refund capture 3C679566HH908993F."],
+  ["BLOCKED   - tool outside the grant", "I changed my mind about the headphones. Please refund my payment. The capture ID on my PayPal receipt is 3C679566HH908993F."],
 ] as const;
 
 const TASKS = live ? LIVE_TASKS : FIXED_TASKS;
