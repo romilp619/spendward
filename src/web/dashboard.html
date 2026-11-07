@@ -6,6 +6,7 @@
 <title>Spendward</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none' stroke='%234d8bff' stroke-width='2.6'%3E%3Cpath d='M1.5 16h29' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='12.8'/%3E%3C/svg%3E">
 <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@34/dist/ag-grid-community.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.1/dist/gsap.min.js"></script>
 <style>
   :root {
     --bg: #f6f7f9;         --panel: #ffffff;      --ink: #11161d;
@@ -52,9 +53,9 @@
   /* The pipeline. A judge who has never seen this product should understand it
      from this strip alone: what the agent asked, what was let through, and what
      actually reached PayPal. */
-  .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 10px; align-items: stretch;
+  .flow { position: relative; display: grid; grid-template-columns: 1fr 64px 1fr 64px 1fr; align-items: stretch;
           margin: 22px 0; }
-  .node { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  .node { position: relative; z-index: 2; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
           padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .node.gate { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
   .nlabel { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
@@ -64,10 +65,17 @@
   .nbig .ok { color: var(--allow); } .nbig .no { color: var(--block); }
   .nbig .sep { color: var(--muted); font-weight: 400; margin: 0 2px; }
   .nsub { font-size: 13px; color: var(--muted); }
-  .arrow { align-self: center; color: var(--muted); font-size: 18px; line-height: 1; }
+  /* The track a decision travels along. Packets ride under the nodes, so they
+     are only ever seen in the gaps: leaving one stage, reaching the next. */
+  .track { position: relative; z-index: 0; align-self: center; height: 2px; margin: 0 8px; background: var(--line); }
+  .track::after { content: ""; position: absolute; right: -1px; top: -4px; width: 8px; height: 8px;
+                  border-top: 2px solid var(--line); border-right: 2px solid var(--line); rotate: 45deg; }
+  .packets { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+  .packet { position: absolute; left: 0; top: 0; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; }
   @media (max-width: 760px) {
     .flow { grid-template-columns: 1fr; }
-    .arrow { transform: rotate(90deg); justify-self: center; }
+    .track { height: 40px; width: 2px; justify-self: center; margin: 6px 0; }
+    .track::after { right: -4px; top: auto; bottom: -1px; rotate: 135deg; }
   }
 
   /* An unanswered decision should look unanswered. */
@@ -75,6 +83,7 @@
   section.urgent > h2 { color: var(--approve); }
   .count { background: var(--approve); color: #000; border-radius: 999px; padding: 1px 8px;
            font-size: 11.5px; margin-left: 7px; font-variant-numeric: tabular-nums; }
+  [hidden] { display: none !important; }
   .empty { margin: 0; color: var(--muted); display: flex; align-items: center; gap: 9px; }
   .empty svg { width: 16px; height: 16px; flex: none; color: var(--allow); }
 
@@ -85,8 +94,7 @@
   .card .sub { margin-top: 3px; }
   /* The budget bar is the mark made functional: a fixed line, a rising fill. */
   .meter { height: 5px; border-radius: 3px; background: var(--line); margin-top: 11px; overflow: hidden; }
-  .meter > i { display: block; height: 100%; background: var(--accent); border-radius: 3px;
-               transition: width .45s ease; }
+  .meter > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; }
   .meter.over > i { background: var(--block); }
   .card .sub { color: var(--muted); font-size: 13px; }
 
@@ -113,6 +121,27 @@
   .badge.allow { color: var(--allow); background: var(--allow-bg); }
   .badge.block { color: var(--block); background: var(--block-bg); }
   .badge.approval { color: var(--approve); background: var(--approve-bg); }
+
+  /* Live status, so a quiet dashboard reads as watching rather than stale. */
+  .live { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+  .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--allow); }
+  .live.down i { background: var(--block); }
+
+  button.danger { color: var(--block); border-color: var(--block); background: transparent; }
+  button.danger.solid { background: var(--block); color: #fff; }
+  .revoke { margin-top: 10px; padding: 5px 12px; font-size: 13px; }
+
+  .evrow { display: grid; grid-template-columns: 96px 1fr auto auto; gap: 14px; align-items: center;
+           padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .evrow .t, .evrow .r { color: var(--muted); }
+  .list > div:last-child .evrow { border-bottom: 0; }
+
+  .toasts { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: 50; max-width: min(420px, calc(100vw - 32px)); }
+  .toast { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px;
+           padding: 11px 14px; font-size: 14px; }
+  .toast.bad { border-left-color: var(--block); } .toast.good { border-left-color: var(--allow); }
+
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   .toolbar label { align-self: center; color: var(--muted); font-size: 14px; }
   .toolbar { display: flex; gap: 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -158,11 +187,42 @@
       <h1>Spendward</h1>
       <span class="tagline">authorization firewall between AI agents and PayPal</span>
     </div>
+    <span class="live" id="live"><i></i><span id="live-text">connecting</span></span>
   </header>
 
-  <div class="flow" id="flow" aria-live="polite"></div>
+  <!-- The pipeline: what the agent asked, what Spendward passed, what reached PayPal. -->
+  <div class="flow" id="flow">
+    <div class="packets" id="packets" aria-hidden="true"></div>
+    <div class="node" id="n-agent">
+      <span class="nlabel">Agent</span>
+      <span class="nbig" id="v-attempts">0</span>
+      <span class="nsub" id="s-attempts">requests made</span>
+    </div>
+    <div class="track" aria-hidden="true"></div>
+    <div class="node gate" id="n-gate">
+      <span class="nlabel">Spendward</span>
+      <span class="nbig"><span class="ok" id="v-passed">0</span><span class="sep">/</span><span class="no" id="v-stopped">0</span></span>
+      <span class="nsub">passed · stopped</span>
+    </div>
+    <div class="track" aria-hidden="true"></div>
+    <div class="node" id="n-paypal">
+      <span class="nlabel">PayPal</span>
+      <span class="nbig" id="v-reached">0</span>
+      <span class="nsub" id="s-reached">orders reached it</span>
+    </div>
+  </div>
 
-  <div class="cards" id="cards"></div>
+  <div class="cards" id="cards">
+    <div class="card" id="c-mandate"><h2>Mandate</h2><div id="mandate-body"></div></div>
+    <div class="card"><h2>Spent</h2>
+      <div class="big num" id="v-spent">USD 0.00</div>
+      <div class="sub" id="s-spent"></div>
+      <div class="meter" id="meter" role="img" aria-label="share of the mandate used"><i></i></div>
+    </div>
+    <div class="card"><h2>Refused</h2><div class="big" id="v-refused">0</div><div class="sub" id="s-refused"></div></div>
+    <div class="card" id="c-chain"><h2>Audit chain</h2><div class="big" id="v-chain">intact</div><div class="sub" id="s-chain"></div></div>
+  </div>
+  <div class="sr" role="status" aria-live="polite" id="announce"></div>
 
   <section aria-labelledby="pending-h" id="pending-section">
     <h2 id="pending-h">Needs you</h2>
@@ -184,6 +244,17 @@
     <div id="grid" role="region" aria-label="Decision history. Select a row and press Enter to investigate it."></div>
   </section>
 </div>
+
+<dialog id="confirm-revoke" aria-labelledby="revoke-h">
+  <h3 id="revoke-h">Revoke this mandate?</h3>
+  <div class="detail">Every later request from the agent will be refused, and approvals still waiting can no longer be granted.
+    Orders already at PayPal are not touched. This cannot be undone: to spend again you mint a new mandate.</div>
+  <div class="close" style="display:flex;gap:8px;justify-content:flex-end">
+    <button id="revoke-cancel">Cancel</button><button id="revoke-go" class="danger solid">Revoke mandate</button>
+  </div>
+</dialog>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
 
 <dialog id="detail" aria-labelledby="detail-h">
   <h3 id="detail-h">Investigation</h3>
@@ -224,129 +295,270 @@ const columns = [
     } },
 ];
 
+// ---------------------------------------------------------------------------
+// Motion. Every animation reports something that happened: a decision moving
+// through the pipeline, a number changing, a card arriving or leaving. With
+// reduced motion everything lands instantly and nothing loops.
+// ---------------------------------------------------------------------------
+const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+// A hidden tab gets no animation frames, so tweens would stall and packets pile
+// up; while hidden, everything lands instantly, as with reduced motion.
+const still = () => reduce.matches || document.hidden;
+gsap.defaults({ ease: "power3.out", duration: 0.5 });
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const $ = id => document.getElementById(id);
+
+/** Count a number from where it was to where it is. */
+function count(el, to, fmt = v => String(Math.round(v))) {
+  if (el._v === to) return;                 // already there, or already counting toward it
+  el._v = to;
+  el._tw?.kill();                           // a newer value restarts from what is on screen
+  const from = el._shown ?? 0;
+  const show = v => { el._shown = v; el.textContent = fmt(v); };
+  if (still() || from === to) { el._tw = null; show(to); return; }
+  const o = { v: from };
+  el._tw = gsap.to(o, { v: to, duration: 0.7, ease: "power2.out", onUpdate: () => show(o.v), onComplete: () => { el._tw = null; show(to); } });
+}
+
+/** Keyed list: new items slide in, gone items fold away, unchanged ones are left alone. */
+function reconcile(box, items, key, render) {
+  const live = new Map([...box.children].filter(n => n.dataset.key && !n._leaving).map(n => [n.dataset.key, n]));
+  const want = new Set(items.map(key));
+  for (const [k, n] of live) if (!want.has(k)) {
+    n._leaving = true;
+    if (still()) n.remove();
+    else gsap.to(n, { autoAlpha: 0, height: 0, marginTop: 0, paddingTop: 0, paddingBottom: 0, duration: 0.35, ease: "power2.in", onComplete: () => n.remove() });
+  }
+  let prev = null;
+  for (const it of items) {
+    const k = key(it), html = render(it);
+    let n = live.get(k);
+    if (!n) {
+      n = document.createElement("div");
+      n.dataset.key = k; n.innerHTML = html; n._html = html;
+      prev ? prev.after(n) : box.prepend(n);
+      if (!still() && box._ready) gsap.from(n, { autoAlpha: 0, y: 14, duration: 0.45 });
+    } else if (n._html !== html) { n.innerHTML = html; n._html = html; }
+    prev = n;
+  }
+  box._ready = true;
+}
+
+function toast(text, kind = "") {
+  const t = document.createElement("div");
+  t.className = `toast ${kind}`; t.textContent = text;
+  $("toasts").append(t);
+  const out = () => still() ? t.remove() : gsap.to(t, { autoAlpha: 0, x: 24, duration: 0.3, ease: "power2.in", onComplete: () => t.remove() });
+  if (!still()) gsap.from(t, { autoAlpha: 0, y: 16, duration: 0.35 });
+  setTimeout(out, 4200);
+}
+
+// ---------------------------------------------------------------------------
+// The pipeline. Each new decision becomes a packet: agent to the gate, then on
+// to PayPal if it was let through, stopped at the gate if refused, dropped
+// toward "Needs you" if it is waiting on the principal.
+// ---------------------------------------------------------------------------
+function centre(el) {
+  const f = $("flow").getBoundingClientRect(), r = el.getBoundingClientRect();
+  return { x: r.left - f.left + r.width / 2, y: r.top - f.top + r.height / 2 };
+}
+
+function packet(e) {
+  if (still()) return gsap.timeline();
+  const agent = centre($("n-agent")), gate = centre($("n-gate")), paypal = centre($("n-paypal"));
+  const tone = e.outcome === "ALLOW" ? css("--allow") : e.outcome === "BLOCK" ? css("--block") : css("--approve");
+  const dot = document.createElement("i");
+  dot.className = "packet";
+  dot.style.background = css("--accent");
+  $("packets").append(dot);
+  const gateEl = $("n-gate");
+  const tl = gsap.timeline({ onComplete: () => dot.remove() });
+  const capture = e.tool === "pay_order";
+  if (!capture) tl.fromTo(dot, { x: agent.x, y: agent.y }, { x: gate.x, y: gate.y, duration: 0.6, ease: "power2.inOut" });
+  else tl.set(dot, { x: gate.x, y: gate.y });
+  // the gate answers in the decision's colour
+  tl.to(gateEl, { borderColor: tone, boxShadow: `0 0 0 1px ${tone} inset`, duration: 0.15 }, capture ? 0 : ">-0.05")
+    .set(dot, { background: tone }, "<");
+  if (e.outcome === "BLOCK") tl.to(gateEl, { keyframes: { x: [0, -5, 5, -3, 3, 0] }, duration: 0.4, ease: "none" }, "<");
+  tl.to(gateEl, { borderColor: css("--accent"), boxShadow: `0 0 0 1px ${css("--accent")} inset`, duration: 0.7, clearProps: "boxShadow,borderColor" }, ">+0.15");
+  if (e.outcome === "ALLOW" && e.paypalOrderId && !e.error) {
+    tl.to(dot, { x: paypal.x, y: paypal.y, duration: 0.6, ease: "power2.inOut" }, "<-0.6")
+      .fromTo($("n-paypal"), { borderColor: tone }, { borderColor: css("--line"), duration: 0.8, clearProps: "borderColor" });
+  } else if (e.outcome === "REQUIRE_APPROVAL") {
+    tl.to(dot, { y: "+=70", autoAlpha: 0, duration: 0.5, ease: "power2.in" }, "<-0.5");
+  } else {
+    tl.to(dot, { scale: 0, duration: 0.3, ease: "power2.in" }, "<-0.5");
+  }
+  return tl;
+}
+
+let seen = null;            // hashes already on screen
+// Packets leave one after another, close enough to read as a burst when the
+// agent makes several decisions at once.
+let nextAt = 0;
+function schedule(e) {
+  const now = performance.now() / 1000, at = Math.max(now, nextAt);
+  nextAt = at + 0.45;
+  gsap.delayedCall(at - now, () => packet(e));
+}
+function announce(e) {
+  const what = e.outcome === "ALLOW" ? "Allowed" : e.outcome === "BLOCK" ? "Blocked" : "Needs your approval";
+  $("announce").textContent = `${what}: ${e.tool}${e.amount != null ? `, ${money(e.amount, e.currency)}` : ""}${e.merchant ? ` at ${e.merchant}` : ""}.`;
+}
+
+// ---------------------------------------------------------------------------
+// Paint: update in place, never rebuild what is already on screen.
+// ---------------------------------------------------------------------------
 function paint() {
   const a = state.audit;
-  const blocked = a.filter(e => e.outcome === "BLOCK").length;
-  const escalated = a.filter(e => e.outcome === "REQUIRE_APPROVAL").length;
-  const spent = state.spent ?? 0;
   const m = state.mandate;
+  const fresh = seen ? a.filter(e => !seen.has(e.hash)) : [];
+  seen = new Set(a.map(e => e.hash));
 
-  document.getElementById("cards").innerHTML = `
-    <div class="card"><h2>Mandate</h2>
-      ${state.revokedAt
-        ? `<div class="big" style="color:var(--block)">revoked</div>
-           <div class="sub">${when(state.revokedAt)} · every request is now refused</div>`
-        : `<div class="big num">${m ? money(m.maxTransactionAmount, m.currency) : "—"}</div>
-           <div class="sub">per transaction · <span class="num">${m ? money(m.maxTotalAmount, m.currency) : "—"}</span> total</div>
-           ${m ? `<button data-revoke="1" style="margin-top:10px;padding:5px 12px;font-size:13px;color:var(--block);border-color:var(--block)">Revoke mandate</button>` : ""}`}</div>
-    <div class="card"><h2>Spent</h2>
-      <div class="big num">${money(spent, m?.currency)}</div>
-      <div class="sub">${m ? `<span class="num">${money(state.spend?.collected ?? 0, m.currency)}</span> paid · <span class="num">${money(state.spend?.held ?? 0, m.currency)}</span> awaiting payment` : ""}</div>
-      ${m ? `<div class="meter${spent > m.maxTotalAmount ? " over" : ""}" role="img"
-               aria-label="${Math.round((spent / m.maxTotalAmount) * 100)} percent of the mandate used">
-               <i style="width:${Math.min(100, (spent / m.maxTotalAmount) * 100)}%"></i></div>` : ""}</div>
-    <div class="card"><h2>Refused</h2>
-      <div class="big">${blocked}</div>
-      <div class="sub">${escalated} escalated to you</div></div>
-    <div class="card"><h2>Audit chain</h2>
-      <div class="big ${state.chain.valid ? "chain-ok" : "chain-bad"}">${state.chain.valid ? "intact" : "broken"}</div>
-      <div class="sub">${state.chain.valid ? a.length + " entries verified" : "entry #" + state.chain.brokenAt + " — " + state.chain.reason}</div></div>`;
+  // pipeline counts
+  const allowed = a.filter(e => e.outcome === "ALLOW").length;
+  const reached = a.filter(e => e.tool === "create_order" && e.paypalOrderId && !e.error).length;
+  const captured = state.collectedCount ?? 0;
+  count($("v-attempts"), a.length);
+  $("s-attempts").textContent = `request${a.length === 1 ? "" : "s"} made`;
+  count($("v-passed"), allowed);
+  count($("v-stopped"), a.length - allowed);
+  count($("v-reached"), reached);
+  $("s-reached").textContent = `order${reached === 1 ? "" : "s"} reached it${captured ? ` · ${captured} captured` : ""}`;
+  fresh.forEach(e => { schedule(e); announce(e); });
 
-  // Only order attempts count as requests; probes for read-only tools are not
-  // the agent asking to spend anything.
-  const attempts = a.length;
-  const allowed  = a.filter(e => e.outcome === "ALLOW").length;
-  const held     = attempts - allowed;
-  const reachedPaypal = a.filter(e => e.paypalOrderId).length;
-  const captured = a.filter(e => e.tool === "pay_order" && e.outcome === "ALLOW").length;
+  // mandate
+  const mb = $("mandate-body"), mk = state.revokedAt ? `r${state.revokedAt}` : `m${m?.id}`;
+  if (mb._k !== mk) {
+    const flip = mb._k && state.revokedAt;
+    mb._k = mk;
+    mb.innerHTML = state.revokedAt
+      ? `<div class="big" style="color:var(--block)">revoked</div><div class="sub">${when(state.revokedAt)} · every request is now refused</div>`
+      : `<div class="big num">${m ? money(m.maxTransactionAmount, m.currency) : "—"}</div>
+         <div class="sub">per transaction · <span class="num">${m ? money(m.maxTotalAmount, m.currency) : "—"}</span> total</div>
+         ${m ? `<button class="danger revoke" data-revoke="1">Revoke mandate</button>` : ""}`;
+    $("c-mandate").style.borderColor = state.revokedAt ? css("--block") : "";
+    if (flip && !still()) gsap.from(mb.firstElementChild, { scale: 1.25, autoAlpha: 0, duration: 0.45, ease: "back.out(2)", transformOrigin: "0 50%" });
+  }
 
-  document.getElementById("flow").innerHTML = `
-    <div class="node">
-      <span class="nlabel">Agent</span>
-      <span class="nbig">${attempts}</span>
-      <span class="nsub">request${attempts === 1 ? "" : "s"} made</span>
-    </div>
-    <div class="arrow" aria-hidden="true">&rarr;</div>
-    <div class="node gate">
-      <span class="nlabel">Spendward</span>
-      <span class="nbig"><span class="ok">${allowed}</span><span class="sep">/</span><span class="no">${held}</span></span>
-      <span class="nsub">passed · stopped</span>
-    </div>
-    <div class="arrow" aria-hidden="true">&rarr;</div>
-    <div class="node">
-      <span class="nlabel">PayPal</span>
-      <span class="nbig">${reachedPaypal}</span>
-      <span class="nsub">order${reachedPaypal === 1 ? "" : "s"} reached it${captured ? ` · ${captured} captured` : ""}</span>
-    </div>`;
+  // spend
+  const spent = state.spent ?? 0, cap = m?.maxTotalAmount ?? 0;
+  count($("v-spent"), spent, v => money(v, m?.currency));
+  $("s-spent").innerHTML = m ? `<span class="num">${money(state.spend?.collected ?? 0, m.currency)}</span> paid · <span class="num">${money(state.spend?.held ?? 0, m.currency)}</span> awaiting payment` : "";
+  const pct = cap ? Math.min(100, (spent / cap) * 100) : 0;
+  $("meter").classList.toggle("over", spent > cap && cap > 0);
+  $("meter").setAttribute("aria-label", `${Math.round(pct)} percent of the mandate used`);
+  gsap.to($("meter").firstElementChild, { width: `${pct}%`, duration: still() ? 0 : 0.8, ease: "power2.out", overwrite: true });
 
-  const pending  = state.approvals.filter(x => x.status === "PENDING");
-  // Every order Spendward let through that nobody has paid for yet: allowed
-  // outright or approved by you. Both wait on the same thing, a buyer.
+  // refused
+  const blocked = a.filter(e => e.outcome === "BLOCK").length, escalated = a.filter(e => e.outcome === "REQUIRE_APPROVAL").length;
+  count($("v-refused"), blocked);
+  $("s-refused").textContent = `${escalated} escalated to you`;
+
+  // chain
+  const ok = state.chain.valid, vc = $("v-chain");
+  vc.className = `big ${ok ? "chain-ok" : "chain-bad"}`;
+  vc.textContent = ok ? "intact" : "broken";
+  $("s-chain").textContent = ok ? `${a.length} entries verified` : `entry #${state.chain.brokenAt}: ${state.chain.reason}`;
+  if (!ok && vc._was !== false && !still()) gsap.fromTo($("c-chain"), { x: 0 }, { keyframes: { x: [0, -6, 6, -4, 4, 0] }, duration: 0.45, ease: "none" });
+  vc._was = ok;
+
+  // needs you
+  const pending = state.approvals.filter(x => x.status === "PENDING");
   const toCapture = state.toCollect ?? [];
-  const collected = state.collectedCount ?? 0;
-
-  const section = document.getElementById("pending-section");
-  section.classList.toggle("urgent", pending.length > 0);
-  document.getElementById("pending-h").innerHTML =
-    `Needs you${pending.length ? `<span class="count">${pending.length}</span>` : ""}`;
-
-  document.getElementById("pending").innerHTML = (pending.length === 0 && toCapture.length === 0
-    ? `<p class="empty">${tick()} Nothing needs you right now.${
-        collected ? ` ${collected} payment${collected > 1 ? "s" : ""} captured.` : ""}</p>` : "") +
-    toCapture.map(o => `
+  $("pending-section").classList.toggle("urgent", pending.length > 0);
+  const waiting = pending.length + toCapture.length;
+  const h = $("pending-h"), hk = String(waiting);
+  if (h._k !== hk) {
+    const grew = (Number(h._k) || 0) < waiting;
+    h._k = hk;
+    h.innerHTML = `Needs you${waiting ? `<span class="count">${waiting}</span>` : ""}`;
+    if (grew && !still()) gsap.from(h.querySelector(".count"), { scale: 1.6, duration: 0.5, ease: "back.out(3)" });
+  }
+  const box = $("pending");
+  let empty = box.querySelector(".empty");
+  if (!empty) { empty = document.createElement("p"); empty.className = "empty"; box.prepend(empty); }
+  empty.innerHTML = `${tick()} Nothing needs you right now.${captured ? ` ${captured} payment${captured > 1 ? "s" : ""} captured.` : ""}`;
+  empty.hidden = pending.length + toCapture.length > 0;
+  const list = box.querySelector(".list") ?? box.appendChild(Object.assign(document.createElement("div"), { className: "list", style: "display:grid;gap:12px" }));
+  reconcile(list, [...toCapture.map(o => ({ kind: "collect", ...o })), ...pending.map(p => ({ kind: "approve", ...p }))],
+    it => it.kind === "collect" ? `c:${it.orderId}` : `p:${it.id}`,
+    it => it.kind === "collect" ? `
       <article class="approval" style="border-color:var(--accent);background:transparent">
         <div class="head">
-          <div><strong>${esc(o.merchant)}</strong> · ${o.approved ? "approved by you" : "allowed"}, waiting for the buyer
-            <div class="sub">order <code>${esc(o.orderId)}</code></div></div>
-          <div class="amount num">${money(o.amount, o.currency)}</div>
+          <div><strong>${esc(it.merchant)}</strong> · ${it.approved ? "approved by you" : "allowed"}, waiting for the buyer
+            <div class="sub">order <code>${esc(it.orderId)}</code></div></div>
+          <div class="amount num">${money(it.amount, it.currency)}</div>
         </div>
         <div class="actions">
-          <a href="https://www.sandbox.paypal.com/checkoutnow?token=${encodeURIComponent(o.orderId)}" target="_blank" rel="noopener"><button>Open PayPal checkout</button></a>
-          <button class="primary" data-capture="${esc(o.orderId)}">Capture payment</button>
-          <span class="sub" data-result="${esc(o.orderId)}" role="status"></span>
+          <a href="https://www.sandbox.paypal.com/checkoutnow?token=${encodeURIComponent(it.orderId)}" target="_blank" rel="noopener"><button>Open PayPal checkout</button></a>
+          <button class="primary" data-capture="${esc(it.orderId)}">Capture payment</button>
         </div>
-      </article>`).join("") +
-    pending.map(p => `
+      </article>` : `
       <article class="approval">
         <div class="head">
-          <div><strong>${esc(p.request.merchant)}</strong> · ${esc(p.request.category)}
-            <div class="sub">${esc(p.agent)} · quantity ${p.request.quantity}</div></div>
-          <div class="amount num">${money(p.request.amount, p.request.currency)}</div>
+          <div><strong>${esc(it.request.merchant)}</strong> · ${esc(it.request.category)}
+            <div class="sub">${esc(it.agent)} · quantity ${it.request.quantity}</div></div>
+          <div class="amount num">${money(it.request.amount, it.request.currency)}</div>
         </div>
-        <ul>${p.violations.map(v => `<li>${esc(v.evidence)}</li>`).join("")}</ul>
+        <ul>${it.violations.map(v => `<li>${esc(v.evidence)}</li>`).join("")}</ul>
         <div class="actions">
-          <button class="primary" data-approve="${p.id}">Approve once</button>
-          <button data-reject="${p.id}">Reject</button>
+          <button class="primary" data-approve="${it.id}">Approve once</button>
+          <button data-reject="${it.id}">Reject</button>
         </div>
-      </article>`).join("");
+      </article>`);
 
+  // what PayPal says
   const ev = state.events ?? [];
-  document.getElementById("events").innerHTML = ev.length === 0
-    ? `<p class="empty" style="color:var(--muted)">Nothing from PayPal yet. Confirmations appear here once a payment is approved or captured.</p>`
-    : `<table style="width:100%;border-collapse:collapse;font-size:14px">
-         ${ev.map(e => `
-           <tr style="border-bottom:1px solid var(--line)">
-             <td style="padding:7px 0;color:var(--muted);white-space:nowrap">${when(e.at)}</td>
-             <td style="padding:7px 10px"><code>${esc(e.type)}</code></td>
-             <td style="padding:7px 10px;color:var(--muted)">${esc(e.resourceId) || ""}</td>
-             <td style="padding:7px 0;text-align:right">${
-               e.verification === "SUCCESS"
-                 ? `<span class="badge allow">verified</span>`
-                 : `<span class="badge block">${esc(e.verification)}</span>`}</td>
-           </tr>`).join("")}
-       </table>`;
+  const evBox = $("events");
+  let evEmpty = evBox.querySelector(".empty");
+  if (!evEmpty) {
+    evEmpty = document.createElement("p"); evEmpty.className = "empty"; evEmpty.style.color = "var(--muted)";
+    evEmpty.textContent = "Nothing from PayPal yet. Confirmations appear here once a payment is approved or captured.";
+    evBox.prepend(evEmpty);
+  }
+  evEmpty.hidden = ev.length > 0;
+  const evList = evBox.querySelector(".list") ?? evBox.appendChild(Object.assign(document.createElement("div"), { className: "list" }));
+  reconcile(evList, ev, e => `${e.at}|${e.type}|${e.resourceId}`, e => `
+    <div class="evrow"><span class="t num">${when(e.at)}</span><code>${esc(e.type)}</code>
+      <span class="r">${esc(e.resourceId) || ""}</span>
+      ${e.verification === "SUCCESS" ? `<span class="badge allow">verified</span>` : `<span class="badge block">${esc(e.verification)}</span>`}</div>`);
 
-  grid?.setGridOption("rowData", a);
+  // audit trail, newest first; new rows flash once
+  // A short trail sizes to its rows; a long one scrolls inside a fixed frame.
+  const tall = a.length > 10;
+  if (grid && grid._tall !== tall) {
+    grid._tall = tall;
+    $("grid").style.height = tall ? "" : "auto";
+    grid.setGridOption("domLayout", tall ? "normal" : "autoHeight");
+  }
+  grid?.setGridOption("rowData", [...a].reverse());
+  if (fresh.length && !still()) {
+    const nodes = fresh.map(e => grid.getRowNode(e.hash)).filter(Boolean);
+    if (nodes.length) grid.flashCells({ rowNodes: nodes, flashDuration: 900, fadeDuration: 700 });
+  }
 }
 
+let lastOk = 0;
 async function load() {
-  const r = await fetch("/api/state");
-  state = await r.json();
-  paint();
+  try {
+    const r = await fetch("/api/state");
+    state = await r.json();
+    lastOk = Date.now();
+    $("live").classList.remove("down");
+    paint();
+  } catch {
+    $("live").classList.add("down");
+  }
 }
+setInterval(() => {
+  if (!lastOk) return;
+  const s = Math.round((Date.now() - lastOk) / 1000);
+  $("live-text").textContent = $("live").classList.contains("down") ? "disconnected" : s < 6 ? "live" : `updated ${s}s ago`;
+}, 1000);
 
 function openDetail(e) {
-  document.getElementById("detail-body").innerHTML = `
+  $("detail-body").innerHTML = `
     <dl class="row"><dt>Decision</dt><dd>${badge(e.outcome)}</dd></dl>
     <dl class="row"><dt>Agent</dt><dd>${esc(e.agent)}</dd></dl>
     <dl class="row"><dt>Mandate</dt><dd><code>${esc(e.mandateId)}</code></dd></dl>
@@ -364,15 +576,21 @@ function openDetail(e) {
         <b>${esc(v.rule)} · ${esc(v.severity)}</b>
         <span>policy: ${esc(v.policy)}<br>requested: ${esc(v.requested)}<br>${esc(v.evidence)}</span>
       </div>`).join("")}`;
-  document.getElementById("detail").showModal();
+  openDialog($("detail"));
 }
 
-grid = agGrid.createGrid(document.getElementById("grid"), {
+function openDialog(d) {
+  d.showModal();
+  if (!still()) gsap.fromTo(d, { autoAlpha: 0, y: 14, scale: 0.98 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.3 });
+}
+
+grid = agGrid.createGrid($("grid"), {
   theme: matchMedia("(prefers-color-scheme: dark)").matches
     ? agGrid.themeQuartz.withPart(agGrid.colorSchemeDark) : agGrid.themeQuartz,
   columnDefs: columns,
   rowData: [],
   rowHeight: 42,
+  getRowId: p => p.data.hash,
   // Every decision carries its colour, so the outcome is readable from the row
   // itself without reading the badge.
   getRowStyle: p => ({
@@ -386,41 +604,59 @@ grid = agGrid.createGrid(document.getElementById("grid"), {
   overlayNoRowsTemplate: "No decisions recorded yet. Run an agent to populate this.",
 });
 
-document.getElementById("q").addEventListener("input", e =>
-  grid.setGridOption("quickFilterText", e.target.value));
-document.getElementById("refresh").addEventListener("click", load);
-document.getElementById("detail-close").addEventListener("click", () =>
-  document.getElementById("detail").close());
+$("q").addEventListener("input", e => grid.setGridOption("quickFilterText", e.target.value));
+$("refresh").addEventListener("click", load);
+$("detail-close").addEventListener("click", () => $("detail").close());
 
-// Revoking is final, so it asks first. Spending again needs a new mandate.
-document.getElementById("cards").addEventListener("click", async e => {
-  if (!e.target.dataset?.revoke) return;
-  if (!confirm("Revoke this mandate? Every later request will be refused, and pending approvals can no longer be granted. This cannot be undone.")) return;
+// Revoking is final, so it asks first, in the page rather than a browser prompt.
+$("cards").addEventListener("click", e => { if (e.target.dataset?.revoke) openDialog($("confirm-revoke")); });
+$("revoke-cancel").addEventListener("click", () => $("confirm-revoke").close());
+$("revoke-go").addEventListener("click", async e => {
   e.target.disabled = true;
-  await fetch("/api/mandate/revoke", { method: "POST" });
+  const r = await fetch("/api/mandate/revoke", { method: "POST" });
+  e.target.disabled = false;
+  $("confirm-revoke").close();
+  r.ok ? toast("Mandate revoked. Every later request will be refused.", "bad") : toast("Could not revoke the mandate.", "bad");
   await load();
 });
 
-document.getElementById("pending").addEventListener("click", async e => {
+$("pending").addEventListener("click", async e => {
   const d = e.target.dataset ?? {};
   const action = d.approve ? "approve" : d.reject ? "reject" : d.capture ? "capture" : null;
   if (!action) return;
   const id = d.approve ?? d.reject ?? d.capture;
-
   e.target.disabled = true;
   const res = await fetch(action === "capture" ? `/api/orders/${encodeURIComponent(id)}/capture` : `/api/approvals/${id}/${action}`, { method: "POST" });
   const body = await res.json().catch(() => ({}));
-
-  if (action === "approve" && !res.ok) alert(body.error ?? "approval refused");
-  if (action === "capture") {
-    const slot = document.querySelector(`[data-result="${id}"]`);
-    if (slot) slot.textContent = res.ok ? `captured: ${body.status}` : body.error;
-    e.target.disabled = false;
-    if (!res.ok) return;
-  }
+  e.target.disabled = false;
+  if (!res.ok) toast(body.error ?? `${action} failed`, "bad");
+  else if (action === "approve") toast("Approved once. The order is at PayPal, waiting for the buyer.", "good");
+  else if (action === "reject") toast("Rejected. Nothing was sent to PayPal.");
+  else toast(`Payment captured: ${body.status}.`, "good");
   await load();
 });
 
+// The opening, once per page load: the mark draws itself, then the page settles in.
+function intro() {
+  if (still()) return;
+  const mark = document.querySelector("header .mark");
+  const [line, fill, ring] = mark.children;
+  const len = el => el.getTotalLength();
+  gsap.set(line, { strokeDasharray: len(line), strokeDashoffset: len(line) });
+  gsap.set(ring, { strokeDasharray: len(ring), strokeDashoffset: len(ring) });
+  gsap.timeline()
+    .to(line, { strokeDashoffset: 0, duration: 0.5, ease: "power2.out" })
+    .to(ring, { strokeDashoffset: 0, duration: 0.7, ease: "power2.inOut" }, "-=0.2")
+    .from(fill, { autoAlpha: 0, duration: 0.4 }, "-=0.2")
+    .from(".wordmark > *", { autoAlpha: 0, x: -8, stagger: 0.08, duration: 0.4 }, 0.25)
+    .from(".flow .node, .flow .track", { autoAlpha: 0, y: 12, stagger: 0.06, duration: 0.45 }, 0.35)
+    .from(".cards .card", { autoAlpha: 0, y: 12, stagger: 0.06, duration: 0.45 }, 0.55)
+    .from(".wrap > section", { autoAlpha: 0, y: 12, stagger: 0.08, duration: 0.45 }, 0.75)
+    .set([line, ring], { clearProps: "strokeDasharray,strokeDashoffset" });
+  gsap.to(".live i", { scale: 1.6, autoAlpha: 0.35, duration: 1.1, repeat: -1, yoyo: true, ease: "sine.inOut" });
+}
+
+intro();
 load();
 setInterval(load, 4000);
 </script>
