@@ -3,21 +3,43 @@
 Things Spendward does not do, or does not do well. Kept current deliberately:
 a control whose limits are undocumented is a control nobody can rely on.
 
-## The agent supplies `merchant` and `payee`
+## The agent still says which shop it is buying from
 
-PayPal's `create_order` schema has no field identifying who receives the funds,
-so Spendward adds `merchant`, `category` and `payee`. The agent fills them.
+Spendward, not the agent, decides which PayPal account an order pays: the
+account signed into the mandate for that shop, written onto the order as its
+`payee`. So an agent cannot send money to an account you never approved.
 
-A sufficiently careful attack could therefore state a truthful-looking merchant
-while redirecting the actual payee -- or lie about both.
+What the agent still controls is the claim that a product comes from a given
+shop. A manipulated agent could buy something from a stranger's listing while
+labelling it `bestbuy.com`. The money would then go to Best Buy's real account
+for an order Best Buy never sold -- a failed or refunded order, not stolen
+funds -- but the mandate cannot prove which shop a listing belongs to.
 
-What still holds in that case: the amount cap, the quantity cap, the cumulative
-cap, the tool grant, the subscription rule and the mandate signature. What does
-not: the merchant allowlist and the recipient check.
+Closing this means binding the order to a cart the merchant signed, which is
+the shape AP2's Cart Mandate already defines.
 
-In a real deployment these fields belong to the merchant side of the
-transaction, not the agent. Closing this properly means binding them to a
-merchant-signed cart -- which is the shape AP2's Cart Mandate already defines.
+## By default every demo shop shares one PayPal account
+
+`npm run setup` maps all demo shops to the business account PayPal created
+for your app, so the payee binding works with no extra setup but every shop
+shares a till. Separate sandbox business accounts per shop, listed in
+`merchants.json`, make the binding visible.
+
+## The signing key and the enforcement point share a machine
+
+The principal's private key is in `.env`, which the dashboard reads to sign
+mandates. The MCP server the agent talks to discards that key at startup and
+verifies with the public key alone, and the demo agent is launched without it.
+But they run as the same user on the same disk, so an agent with shell access
+could read the file. In a real deployment the key belongs on the principal's
+device -- a passkey or a phone -- and only the public key reaches the server.
+
+## The dashboard has no login
+
+Anyone who can reach the dashboard can approve, sign, switch or revoke
+mandates and connect a wallet. It is meant to run on localhost. Exposed
+anywhere else it needs authentication in front of every action, ideally the
+same passkey that holds the signing key.
 
 ## Injection detection is not a control
 
@@ -28,15 +50,30 @@ regardless of whether anything was detected.
 
 ## The spend ledger is a local file
 
-`audit.jsonl` is hash-chained and tamper-evident, but it is a single file on one
-machine. Two Spendward processes sharing a mandate would race on the cumulative
-limit. A real deployment needs a transactional store.
+`audit.jsonl` is HMAC-chained, so it cannot be rewritten without `AUDIT_KEY`.
+Someone who holds that key can still rewrite it end to end; publishing the
+latest hash somewhere outside the machine would close that. It is also a
+single file: two Spendward processes sharing a mandate would race on the
+budget. A real deployment needs a transactional store.
 
 ## Benchmark coverage is narrow
 
-Nine scenarios, five models, one agent implementation, one task phrasing.
+Nine scenarios, six models, one agent implementation, one task phrasing.
 Enough to show that susceptibility varies and the enforcement point holds; not
 enough to characterise any model's susceptibility in general.
+
+The demo's attack uses a planted listing (`src/demo/planted.ts`). It is
+labelled as such, off unless the demo scripts enable it, and it is the only
+synthetic content in a live run. Whether a given model falls for it changes
+between runs: the model the demo uses refused it when it could ask the user,
+and fell for it every time it ran unattended.
+
+## The saved wallet is a local file
+
+The PayPal Vault token sits in `wallet.json`. It cannot be used to log in to
+the wallet, only to charge it through this PayPal app, and it can be revoked
+from the dashboard or from the PayPal account. It deserves the same protection
+as the signing key.
 
 ## The capture guard is not atomic
 

@@ -1,5 +1,6 @@
 import { appendFileSync, readFileSync, existsSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
+import type { BudgetPeriod } from "./mandate.js";
 import type { Decision, PaymentRequest } from "./policy.js";
 
 export interface AuditEntry {
@@ -21,6 +22,11 @@ export interface AuditEntry {
   /** Where the agent's instruction came from, when it is known. */
   sourceContext: string | null;
   /**
+   * The PayPal account the money was sent to, as Spendward set it on the order
+   * (not as the agent described it). Null when no payment was made.
+   */
+  payeeAccount: string | null;
+  /**
    * Set when Spendward allowed the call but PayPal refused it. Such a call
    * still belongs in the record: it was authorized and it was attempted.
    */
@@ -32,8 +38,16 @@ export interface AuditEntry {
 const GENESIS = "0".repeat(64);
 const path = () => process.env.SPENDWARD_AUDIT_LOG ?? "audit.jsonl";
 
+/**
+ * With AUDIT_KEY set each link is an HMAC, so someone who can edit the file
+ * but does not hold the key cannot rewrite history and recompute a valid
+ * chain. A plain hash only catches edits made by someone who did not bother
+ * to recompute. The dashboard says which of the two is in force.
+ */
+export const chainKeyed = () => Boolean(process.env.AUDIT_KEY);
 function digest(entry: Omit<AuditEntry, "hash">): string {
-  return createHash("sha256").update(JSON.stringify(entry)).digest("hex");
+  const key = process.env.AUDIT_KEY;
+  return (key ? createHmac("sha256", key) : createHash("sha256")).update(JSON.stringify(entry)).digest("hex");
 }
 
 function readAll(): AuditEntry[] {
@@ -57,6 +71,7 @@ export function record(input: {
   request: PaymentRequest | null;
   paypalOrderId: string | null;
   error?: string | null;
+  payeeAccount?: string | null;
 }): AuditEntry {
   const existing = readAll();
   const prev = existing[existing.length - 1];
@@ -78,6 +93,7 @@ export function record(input: {
     violations: input.decision.violations,
     paypalOrderId: input.paypalOrderId,
     sourceContext: input.request?.sourceContext ?? null,
+    payeeAccount: input.payeeAccount ?? null,
     error: input.error ?? null,
     prevHash: prev?.hash ?? GENESIS,
   };
@@ -143,8 +159,20 @@ export interface Spend {
   held: number;
 }
 
-export function spend(mandateId: string, now = Date.now()): Spend {
-  const mine = orders(now).filter((o) => o.mandateId === mandateId);
+/** Start of the budget period containing `now`, in UTC. Weeks start on Monday. */
+export function periodStart(period: BudgetPeriod | undefined, now = Date.now()): number {
+  const d = new Date(now);
+  switch (period ?? "none") {
+    case "day": return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    case "week": return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+    case "month": return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+    default: return 0;
+  }
+}
+
+export function spend(mandateId: string, now = Date.now(), period?: BudgetPeriod): Spend {
+  const from = periodStart(period, now);
+  const mine = orders(now).filter((o) => o.mandateId === mandateId && Date.parse(o.at) >= from);
   return {
     collected: mine.filter((o) => o.captured).reduce((s, o) => s + o.amount, 0),
     held: mine.filter((o) => o.held).reduce((s, o) => s + o.amount, 0),
@@ -155,13 +183,15 @@ export function spend(mandateId: string, now = Date.now()): Spend {
  * What the cumulative cap is enforced against: money that moved plus orders
  * still waiting to be paid. Each order counts once, however it is captured.
  */
-export function spentUnder(mandateId: string, now = Date.now()): number {
-  const s = spend(mandateId, now);
+export function spentUnder(mandateId: string, now = Date.now(), period?: BudgetPeriod): number {
+  const s = spend(mandateId, now, period);
   return Math.round((s.collected + s.held) * 100) / 100;
 }
 
 export interface ChainCheck {
   valid: boolean;
+  /** Whether links are keyed (HMAC) or plain hashes. */
+  keyed?: boolean;
   brokenAt: number | null;
   reason: string | null;
 }
@@ -172,12 +202,12 @@ export function verifyChain(): ChainCheck {
   for (const entry of readAll()) {
     const { hash, ...body } = entry;
     if (body.prevHash !== prevHash) {
-      return { valid: false, brokenAt: entry.seq, reason: "prevHash does not match the preceding entry" };
+      return { valid: false, keyed: chainKeyed(), brokenAt: entry.seq, reason: "prevHash does not match the preceding entry" };
     }
     if (digest(body) !== hash) {
-      return { valid: false, brokenAt: entry.seq, reason: "entry contents do not match its hash" };
+      return { valid: false, keyed: chainKeyed(), brokenAt: entry.seq, reason: "entry contents do not match its hash" };
     }
     prevHash = hash;
   }
-  return { valid: true, brokenAt: null, reason: null };
+  return { valid: true, keyed: chainKeyed(), brokenAt: null, reason: null };
 }

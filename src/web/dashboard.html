@@ -84,6 +84,7 @@
   .count { background: var(--approve); color: #000; border-radius: 999px; padding: 1px 8px;
            font-size: 11.5px; margin-left: 7px; font-variant-numeric: tabular-nums; }
   [hidden] { display: none !important; }
+  .num { white-space: nowrap; }
   .empty { margin: 0; color: var(--muted); display: flex; align-items: center; gap: 9px; }
   .empty svg { width: 16px; height: 16px; flex: none; color: var(--allow); }
 
@@ -153,6 +154,34 @@
 
   #grid { height: 420px; }
 
+  /* Mandates and wallet */
+  .mrow { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+          padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .list > div:last-child .mrow { border-bottom: 0; }
+  .mrow .what { font-size: 14px; } .mrow .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .tag { display: inline-block; font-size: 11.5px; font-weight: 650; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; }
+  .tag.on { color: var(--allow); background: var(--allow-bg); } .tag.off { color: var(--block); background: var(--block-bg); }
+  .walletline { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+                padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .walletline .meta { color: var(--muted); font-size: 13px; }
+  .payee { margin-top: 8px; font-size: 13.5px; } .payee code { font-size: 12.5px; }
+  textarea, .form input, .form select {
+    font: inherit; padding: 7px 10px; border-radius: 7px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--ink); width: 100%; box-sizing: border-box;
+  }
+  textarea { min-height: 84px; resize: vertical; }
+  textarea:focus-visible, .form input:focus-visible, .form select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 14px; }
+  .form label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  .form .wide { grid-column: 1 / -1; }
+  .form .check { display: flex; gap: 8px; align-items: center; color: var(--ink); }
+  .form .check input { width: auto; }
+  .assume { margin: 12px 0 0; padding: 10px 12px 10px 28px; border-radius: 8px; background: var(--approve-bg); font-size: 13.5px; }
+  .assume li + li { margin-top: 3px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+  .err { color: var(--block); font-size: 13.5px; margin: 10px 0 0; }
+  @media (max-width: 560px) { .form { grid-template-columns: 1fr; } .mrow { grid-template-columns: 1fr; } }
+
   dialog {
     border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
     color: var(--ink); padding: 0; max-width: 620px; width: calc(100vw - 32px);
@@ -188,6 +217,7 @@
       <span class="tagline">authorization firewall between AI agents and PayPal</span>
     </div>
     <span class="live" id="live"><i></i><span id="live-text">connecting</span></span>
+    <button id="notify" class="revoke" hidden>Notify me</button>
   </header>
 
   <!-- The pipeline: what the agent asked, what Spendward passed, what reached PayPal. -->
@@ -224,6 +254,16 @@
   </div>
   <div class="sr" role="status" aria-live="polite" id="announce"></div>
 
+  <section aria-labelledby="mandates-h" id="mandates-section">
+    <h2 id="mandates-h">Mandates and wallet</h2>
+    <div class="walletline" id="wallet"></div>
+    <div class="toolbar" style="justify-content:space-between">
+      <span class="hint" style="margin:0">The active mandate governs the agent's next request. Switching takes effect at once.</span>
+      <button class="primary" id="new-mandate">New mandate</button>
+    </div>
+    <div class="pending" id="mandates" style="padding-top:4px;padding-bottom:4px"></div>
+  </section>
+
   <section aria-labelledby="pending-h" id="pending-section">
     <h2 id="pending-h">Needs you</h2>
     <div class="pending" id="pending"></div>
@@ -248,9 +288,38 @@
 <dialog id="confirm-revoke" aria-labelledby="revoke-h">
   <h3 id="revoke-h">Revoke this mandate?</h3>
   <div class="detail">Every later request from the agent will be refused, and approvals still waiting can no longer be granted.
-    Orders already at PayPal are not touched. This cannot be undone: to spend again you mint a new mandate.</div>
+    Orders already at PayPal are not touched. This cannot be undone: to spend again you sign a new mandate.</div>
   <div class="close" style="display:flex;gap:8px;justify-content:flex-end">
     <button id="revoke-cancel">Cancel</button><button id="revoke-go" class="danger solid">Revoke mandate</button>
+  </div>
+</dialog>
+
+<dialog id="mandate-dialog" aria-labelledby="mandate-dh">
+  <h3 id="mandate-dh">New mandate</h3>
+  <div class="detail">
+    <label for="m-text" style="font-size:14px">Say what your agent may buy, in your own words</label>
+    <textarea id="m-text" style="margin-top:6px" placeholder="For example: my agent can buy headphones from Best Buy, nothing over $150, at most $400 a month, no subscriptions."></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+      <button id="m-draft">Draft with AI</button>
+      <span class="hint" style="margin:0">The AI fills in the form below. Nothing is signed until you check it and sign.</span>
+    </div>
+    <ul class="assume" id="m-assume" hidden></ul>
+    <form class="form" id="m-form" autocomplete="off">
+      <label>Per payment, USD<input name="maxTransactionAmount" type="number" min="1" step="0.01" required></label>
+      <label>Ask me up to, USD<input name="approvalCeiling" type="number" min="1" step="0.01" required></label>
+      <label>Budget, USD<input name="maxTotalAmount" type="number" min="1" step="0.01" required></label>
+      <label>Budget resets<select name="budgetPeriod"><option value="month">every month</option><option value="week">every week</option><option value="day">every day</option><option value="none">never</option></select></label>
+      <label class="wide">Shops, comma separated<input name="allowedMerchants" required></label>
+      <label class="wide">Kinds of thing, comma separated (empty means anything)<input name="allowedCategories"></label>
+      <label>Items per order<input name="maxQuantity" type="number" min="1" step="1" required></label>
+      <label>Expires in, days<input name="expiresInDays" type="number" min="1" max="365" step="1" required></label>
+      <label class="check wide"><input name="allowSubscriptions" type="checkbox"> Allow subscriptions (recurring charges)</label>
+    </form>
+    <p class="hint" id="m-shops"></p>
+    <p class="err" id="m-err" hidden></p>
+  </div>
+  <div class="close" style="display:flex;gap:8px;justify-content:flex-end">
+    <button id="m-cancel">Cancel</button><button id="m-sign" class="primary">Sign and activate</button>
   </div>
 </dialog>
 
@@ -428,14 +497,15 @@ function paint() {
   fresh.forEach(e => { schedule(e); announce(e); });
 
   // mandate
-  const mb = $("mandate-body"), mk = state.revokedAt ? `r${state.revokedAt}` : `m${m?.id}`;
+  const mb = $("mandate-body"), mk = state.revokedAt ? `r${state.revokedAt}` : `m${m?.id}${m?.issuedAt}`;
   if (mb._k !== mk) {
     const flip = mb._k && state.revokedAt;
     mb._k = mk;
     mb.innerHTML = state.revokedAt
       ? `<div class="big" style="color:var(--block)">revoked</div><div class="sub">${when(state.revokedAt)} · every request is now refused</div>`
       : `<div class="big num">${m ? money(m.maxTransactionAmount, m.currency) : "—"}</div>
-         <div class="sub">per transaction · <span class="num">${m ? money(m.maxTotalAmount, m.currency) : "—"}</span> total</div>
+         <div class="sub">per payment · <span class="num">${m ? money(m.maxTotalAmount, m.currency) : "—"}</span> ${m ? PER[m.budgetPeriod] ?? "total" : ""}</div>
+         <div class="sub">${m ? esc(m.allowedMerchants.join(", ")) : "no active mandate"}</div>
          ${m ? `<button class="danger revoke" data-revoke="1">Revoke mandate</button>` : ""}`;
     $("c-mandate").style.borderColor = state.revokedAt ? css("--block") : "";
     if (flip && !still()) gsap.from(mb.firstElementChild, { scale: 1.25, autoAlpha: 0, duration: 0.45, ease: "back.out(2)", transformOrigin: "0 50%" });
@@ -444,7 +514,7 @@ function paint() {
   // spend
   const spent = state.spent ?? 0, cap = m?.maxTotalAmount ?? 0;
   count($("v-spent"), spent, v => money(v, m?.currency));
-  $("s-spent").innerHTML = m ? `<span class="num">${money(state.spend?.collected ?? 0, m.currency)}</span> paid · <span class="num">${money(state.spend?.held ?? 0, m.currency)}</span> awaiting payment` : "";
+  $("s-spent").innerHTML = m ? `${SINCE[m.budgetPeriod] ?? ""}<span class="num">${money(state.spend?.collected ?? 0, m.currency)}</span> paid · <span class="num">${money(state.spend?.held ?? 0, m.currency)}</span> awaiting payment` : "";
   const pct = cap ? Math.min(100, (spent / cap) * 100) : 0;
   $("meter").classList.toggle("over", spent > cap && cap > 0);
   $("meter").setAttribute("aria-label", `${Math.round(pct)} percent of the mandate used`);
@@ -459,7 +529,9 @@ function paint() {
   const ok = state.chain.valid, vc = $("v-chain");
   vc.className = `big ${ok ? "chain-ok" : "chain-bad"}`;
   vc.textContent = ok ? "intact" : "broken";
-  $("s-chain").textContent = ok ? `${a.length} entries verified` : `entry #${state.chain.brokenAt}: ${state.chain.reason}`;
+  $("s-chain").textContent = ok
+    ? `${a.length} entries verified · ${state.chain.keyed ? "keyed" : "unkeyed, set AUDIT_KEY"}`
+    : `entry #${state.chain.brokenAt}: ${state.chain.reason}`;
   if (!ok && vc._was !== false && !still()) gsap.fromTo($("c-chain"), { x: 0 }, { keyframes: { x: [0, -6, 6, -4, 4, 0] }, duration: 0.45, ease: "none" });
   vc._was = ok;
 
@@ -487,7 +559,7 @@ function paint() {
       <article class="approval" style="border-color:var(--accent);background:transparent">
         <div class="head">
           <div><strong>${esc(it.merchant)}</strong> · ${it.approved ? "approved by you" : "allowed"}, waiting for the buyer
-            <div class="sub">order <code>${esc(it.orderId)}</code></div></div>
+            <div class="sub">order <code>${esc(it.orderId)}</code>${it.payee ? ` · pays PayPal account <code>${esc(it.payee)}</code>` : ""}</div></div>
           <div class="amount num">${money(it.amount, it.currency)}</div>
         </div>
         <div class="actions">
@@ -502,6 +574,9 @@ function paint() {
           <div class="amount num">${money(it.request.amount, it.request.currency)}</div>
         </div>
         <ul>${it.violations.map(v => `<li>${esc(v.evidence)}</li>`).join("")}</ul>
+        <div class="payee">${it.payee
+          ? `Approving pays <strong>${esc(it.payee.name)}</strong>, PayPal account <code>${esc(it.payee.account)}</code>${state.wallet ? ", from your saved wallet" : ""}.`
+          : `<strong>No PayPal account is on record for this shop</strong>, so it cannot be paid.`}</div>
         <div class="actions">
           <button class="primary" data-approve="${it.id}">Approve once</button>
           <button data-reject="${it.id}">Reject</button>
@@ -547,6 +622,8 @@ async function load() {
     lastOk = Date.now();
     $("live").classList.remove("down");
     paint();
+    paintMandates();
+    notifyWaiting();
   } catch {
     $("live").classList.add("down");
   }
@@ -565,7 +642,8 @@ function openDetail(e) {
     <dl class="row"><dt>Tool</dt><dd><code>${esc(e.tool)}</code></dd></dl>
     <dl class="row"><dt>Requested</dt><dd>${money(e.amount, e.currency)} · quantity ${e.quantity ?? "—"}</dd></dl>
     <dl class="row"><dt>Merchant</dt><dd>${esc(e.merchant)}</dd></dl>
-    <dl class="row"><dt>Payee</dt><dd>${esc(e.recipient)}</dd></dl>
+    <dl class="row"><dt>Payee, as the agent wrote it</dt><dd>${esc(e.recipient)}</dd></dl>
+    <dl class="row"><dt>PayPal account paid</dt><dd>${e.payeeAccount ? `<code>${esc(e.payeeAccount)}</code>` : "—"}</dd></dl>
     <dl class="row"><dt>Instruction source</dt><dd>${esc(e.sourceContext) || "—"}</dd></dl>
     <dl class="row"><dt>PayPal call</dt><dd>${
       e.error ? "<strong>attempted, rejected by PayPal</strong><br><code>" + esc(e.error) + "</code>"
@@ -630,11 +708,149 @@ $("pending").addEventListener("click", async e => {
   const body = await res.json().catch(() => ({}));
   e.target.disabled = false;
   if (!res.ok) toast(body.error ?? `${action} failed`, "bad");
-  else if (action === "approve") toast("Approved once. The order is at PayPal, waiting for the buyer.", "good");
+  else if (action === "approve") toast(body.paid ? `Approved once and paid to ${body.payeeName} from your saved wallet.` : "Approved once. The order is at PayPal, waiting for the buyer.", "good");
   else if (action === "reject") toast("Rejected. Nothing was sent to PayPal.");
   else toast(`Payment captured: ${body.status}.`, "good");
   await load();
 });
+
+// ---------------------------------------------------------------------------
+// Mandates and wallet
+// ---------------------------------------------------------------------------
+const PER = { month: "a month", week: "a week", day: "a day", none: "in total" };
+const SINCE = { month: "this month: ", week: "this week: ", day: "today: ", none: "" };
+
+function paintMandates() {
+  const w = state.wallet;
+  const wb = $("wallet"), wk = JSON.stringify(w);
+  if (wb._k !== wk) {
+    wb._k = wk;
+    wb.innerHTML = w
+      ? `<div><strong>PayPal wallet connected</strong>${w.email ? ` · ${esc(w.email)}` : ""}
+           <div class="meta">Payments your mandate allows are charged to it straight away, with no checkout page.</div></div>
+         <button id="wallet-off">Disconnect</button>`
+      : `<div><strong>No saved wallet</strong>
+           <div class="meta">Every allowed order waits for you at PayPal checkout. Connect once and the agent can pay on its own, inside your mandate.</div></div>
+         <button class="primary" id="wallet-on">Connect PayPal wallet</button>`;
+  }
+  reconcile($("mandates").querySelector(".list") ?? $("mandates").appendChild(Object.assign(document.createElement("div"), { className: "list" })),
+    state.mandates ?? [], x => x.id + (x.active ? "*" : "") + (x.revokedAt ?? ""), x => `
+    <div class="mrow">
+      <div>
+        <div class="what"><strong>${money(x.maxTransactionAmount, x.currency)}</strong> per payment ·
+          <strong>${money(x.maxTotalAmount, x.currency)}</strong> ${PER[x.budgetPeriod] ?? "in total"} ·
+          ${esc(x.allowedMerchants.join(", "))}
+          ${x.active ? `<span class="tag on">active</span>` : ""}${x.revokedAt ? `<span class="tag off">revoked</span>` : ""}</div>
+        <div class="meta"><code>${esc(x.id)}</code> · signed ${when(x.issuedAt)} · expires ${new Date(x.expiresAt).toLocaleDateString()}</div>
+      </div>
+      <div>${!x.active && !x.revokedAt ? `<button data-activate="${esc(x.id)}">Make active</button>` : ""}</div>
+    </div>`);
+}
+
+$("mandates-section").addEventListener("click", async e => {
+  const t = e.target;
+  if (t.id === "wallet-on") {
+    t.disabled = true;
+    const r = await fetch("/api/wallet/connect", { method: "POST" });
+    const b = await r.json().catch(() => ({}));
+    t.disabled = false;
+    if (r.ok && b.approveUrl) location.href = b.approveUrl;
+    else toast(b.error ?? "Could not start connecting the wallet.", "bad");
+  } else if (t.id === "wallet-off") {
+    t.disabled = true;
+    await fetch("/api/wallet/disconnect", { method: "POST" });
+    toast("Wallet disconnected. Orders will wait for checkout again.");
+    await load();
+  } else if (t.dataset?.activate) {
+    t.disabled = true;
+    const r = await fetch(`/api/mandates/${encodeURIComponent(t.dataset.activate)}/activate`, { method: "POST" });
+    const b = await r.json().catch(() => ({}));
+    r.ok ? toast(`Mandate ${b.id} is now active.`, "good") : toast(b.error ?? "Could not switch mandate.", "bad");
+    await load();
+  }
+});
+
+const form = $("m-form");
+function fillForm(d) {
+  for (const [k, v] of Object.entries(d)) {
+    const el = form.elements[k];
+    if (!el) continue;
+    if (el.type === "checkbox") el.checked = Boolean(v);
+    else el.value = Array.isArray(v) ? v.join(", ") : v;
+  }
+}
+function showErr(msg) { const e = $("m-err"); e.hidden = !msg; e.textContent = msg ?? ""; }
+
+$("new-mandate").addEventListener("click", () => {
+  const m = state.mandate;
+  fillForm({
+    maxTransactionAmount: m?.maxTransactionAmount ?? 100, approvalCeiling: m?.approvalCeiling ?? 120,
+    maxTotalAmount: m?.maxTotalAmount ?? 300, budgetPeriod: m?.budgetPeriod ?? "month",
+    allowedMerchants: m?.allowedMerchants ?? [], allowedCategories: m?.allowedCategories ?? [],
+    maxQuantity: m?.maxQuantity ?? 1, expiresInDays: 30, allowSubscriptions: false,
+  });
+  $("m-assume").hidden = true; showErr(null);
+  const shops = Object.entries(state.merchants ?? {});
+  $("m-shops").textContent = shops.length ? `Shops with a PayPal account on record: ${shops.map(([k]) => k).join(", ")}.` : "No shops have a PayPal account on record yet (merchants.json).";
+  openDialog($("mandate-dialog"));
+  $("m-text").focus();
+});
+$("m-cancel").addEventListener("click", () => $("mandate-dialog").close());
+
+$("m-draft").addEventListener("click", async e => {
+  const text = $("m-text").value.trim();
+  if (!text) return showErr("Describe what the agent may buy first.");
+  e.target.disabled = true; e.target.textContent = "Drafting…"; showErr(null);
+  const r = await fetch("/api/mandates/draft", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+  const b = await r.json().catch(() => ({}));
+  e.target.disabled = false; e.target.textContent = "Draft with AI";
+  if (!r.ok) return showErr(b.error ?? "The draft failed.");
+  fillForm(b.draft);
+  const notes = [...(b.assumptions ?? []), ...(b.unknownMerchants?.length ? [`No PayPal account is on record for ${b.unknownMerchants.join(", ")}; remove it or add it to merchants.json before signing.`] : [])];
+  const ul = $("m-assume");
+  ul.innerHTML = notes.map(n => `<li>${esc(n)}</li>`).join("");
+  ul.hidden = notes.length === 0;
+  if (!still()) gsap.from(form.querySelectorAll("input, select"), { backgroundColor: css("--approve-bg"), duration: 1.2, stagger: 0.03, clearProps: "backgroundColor" });
+});
+
+$("m-sign").addEventListener("click", async e => {
+  const f = new FormData(form);
+  const list = k => String(f.get(k) ?? "").split(",").map(s => s.trim()).filter(Boolean);
+  const body = {
+    maxTransactionAmount: Number(f.get("maxTransactionAmount")), approvalCeiling: Number(f.get("approvalCeiling")),
+    maxTotalAmount: Number(f.get("maxTotalAmount")), budgetPeriod: f.get("budgetPeriod"),
+    maxQuantity: Number(f.get("maxQuantity")), expiresInDays: Number(f.get("expiresInDays")),
+    allowedMerchants: list("allowedMerchants"), allowedCategories: list("allowedCategories"),
+    allowSubscriptions: form.elements.allowSubscriptions.checked,
+  };
+  e.target.disabled = true;
+  const r = await fetch("/api/mandates", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const b = await r.json().catch(() => ({}));
+  e.target.disabled = false;
+  if (!r.ok) return showErr(b.error ?? "Could not sign the mandate.");
+  $("mandate-dialog").close();
+  toast(`Signed ${b.id} with your key. It governs the agent's next request.`, "good");
+  await load();
+});
+
+// Approvals wait on you, so say so even when this tab is in the background.
+const canNotify = "Notification" in window;
+if (canNotify && Notification.permission === "default") $("notify").hidden = false;
+$("notify").addEventListener("click", async () => {
+  const p = await Notification.requestPermission();
+  $("notify").hidden = true;
+  if (p === "granted") toast("You'll be notified when a payment needs you.", "good");
+});
+let lastWaiting = null;
+function notifyWaiting() {
+  const pending = (state.approvals ?? []).filter(x => x.status === "PENDING");
+  document.title = pending.length ? `(${pending.length}) Spendward` : "Spendward";
+  if (lastWaiting !== null && pending.length > lastWaiting && canNotify && Notification.permission === "granted" && document.hidden) {
+    const p = pending[pending.length - 1];
+    new Notification("Spendward needs you", { body: `${p.agent} wants to pay ${money(p.request.amount, p.request.currency)} at ${p.request.merchant}.` });
+  }
+  lastWaiting = pending.length;
+}
 
 // The opening, once per page load: the mark draws itself, then the page settles in.
 function intro() {

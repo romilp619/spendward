@@ -1,5 +1,5 @@
 import type { Mandate, SignedMandate } from "./mandate.js";
-import { verifyMandate } from "./mandate.js";
+import { enforcementKey, verifyMandate } from "./mandate.js";
 
 export type Outcome = "ALLOW" | "REQUIRE_APPROVAL" | "BLOCK";
 export type Severity = "CRITICAL" | "HIGH" | "MEDIUM";
@@ -38,11 +38,39 @@ export interface Decision {
 }
 
 export interface LedgerState {
-  /** Already spent under this mandate, in its currency. */
+  /** Already spent under this mandate in the current budget period, in its currency. */
   spent: number;
   /** When the principal revoked this mandate, if they did. */
   revokedAt?: string | null;
+  /**
+   * The PayPal account this payment would actually reach, as resolved by
+   * Spendward from the mandate or the merchant directory -- never from the
+   * agent. null means no account is known for the merchant, so nobody can say
+   * where the money would go. Left undefined for calls that pay no one.
+   */
+  payeeAccount?: string | null;
 }
+
+/**
+ * A category is allowed when the shop's category name contains it as whole
+ * words: "headphones" covers "In-Ear Headphones" but not "Headphone Stands".
+ * Shops name categories their own way, and a principal writes "headphones",
+ * not one shop's taxonomy.
+ */
+export function categoryAllowed(allowed: string[], category: string): boolean {
+  const words = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const have = words(category);
+  return allowed.some((a) => {
+    const want = words(a);
+    if (want.length === 0) return false;
+    for (let i = 0; i + want.length <= have.length; i++) {
+      if (want.every((w, j) => have[i + j] === w)) return true;
+    }
+    return false;
+  });
+}
+
+const PERIOD_WORD = { none: "", day: " today", week: " this week", month: " this month" } as const;
 
 const money = (n: number, currency: string) => `${currency} ${n.toFixed(2)}`;
 
@@ -63,10 +91,7 @@ export function evaluate(
 
   // Signature first. An unverified mandate tells us nothing, so no later rule
   // would mean anything.
-  const key = process.env.MANDATE_SIGNING_KEY;
-  if (!key) throw new Error("MANDATE_SIGNING_KEY is not set");
-
-  if (!verifyMandate(signed, key)) {
+  if (!verifyMandate(signed, enforcementKey())) {
     return {
       outcome: "BLOCK",
       mandateId: null,
@@ -161,9 +186,23 @@ export function evaluate(
     });
   }
 
+  // Spendward, not the agent, decides where the money goes. A merchant with no
+  // known PayPal account cannot be paid safely: there is nothing to bind the
+  // order's payee to, and approving it would mean approving an unknown recipient.
+  if (ledger.payeeAccount === null) {
+    v.push({
+      rule: "UNKNOWN_PAYEE",
+      severity: "CRITICAL",
+      policy: "payments go only to a PayPal account named in the mandate or the merchant directory",
+      requested: request.merchant,
+      evidence: "no PayPal account is on record for this merchant, so the recipient cannot be verified",
+      escalatable: false,
+    });
+  }
+
   // An empty list means the mandate does not constrain category at all, which
   // is different from constraining it to nothing.
-  if (m.allowedCategories.length > 0 && !m.allowedCategories.includes(request.category)) {
+  if (m.allowedCategories.length > 0 && !categoryAllowed(m.allowedCategories, request.category)) {
     v.push({
       rule: "CATEGORY_NOT_ALLOWED",
       severity: "MEDIUM",
@@ -214,16 +253,17 @@ export function evaluate(
   }
 
   const projected = ledger.spent + request.amount;
+  const when = PERIOD_WORD[m.budgetPeriod ?? "none"];
   if (projected > m.maxTotalAmount) {
     v.push({
       rule: "CUMULATIVE_LIMIT",
       severity: "HIGH",
-      policy: `total spend <= ${money(m.maxTotalAmount, m.currency)}`,
+      policy: `total spend <= ${money(m.maxTotalAmount, m.currency)}${when ? ` per ${m.budgetPeriod}` : ""}`,
       requested: money(projected, m.currency),
       evidence:
         ledger.spent > 0
-          ? `${money(ledger.spent, m.currency)} already spent, leaving ${money(m.maxTotalAmount - ledger.spent, m.currency)} of this mandate`
-          : `single payment alone exceeds the mandate's total of ${money(m.maxTotalAmount, m.currency)}`,
+          ? `${money(ledger.spent, m.currency)} already spent${when}, leaving ${money(m.maxTotalAmount - ledger.spent, m.currency)}`
+          : `single payment alone exceeds the budget of ${money(m.maxTotalAmount, m.currency)}`,
       // Not waivable. The per-transaction cap exists to be escalated -- that is
       // what approvalCeiling is for -- but a total the principal can raise one
       // click at a time is not a total. Spending more needs a new mandate.

@@ -1,7 +1,8 @@
 import type { SignedMandate } from "./mandate.js";
 import type { Decision, LedgerState, PaymentRequest } from "./policy.js";
 import { evaluate } from "./policy.js";
-import { createOrder, type Order } from "./paypal.js";
+import type { Order } from "./paypal.js";
+import { placeOrder } from "./checkout.js";
 
 export interface GuardResult {
   decision: Decision;
@@ -22,18 +23,6 @@ export async function guardedPurchase(
   urls: { returnUrl: string; cancelUrl: string },
 ): Promise<GuardResult> {
   const decision = evaluate(signed, request, ledger);
-
-  if (decision.outcome !== "ALLOW") {
-    return { decision, order: null };
-  }
-
-  const order = await createOrder({
-    amount: request.amount,
-    currency: request.currency,
-    description: `${request.merchant} - ${request.category}`,
-    returnUrl: urls.returnUrl,
-    cancelUrl: urls.cancelUrl,
-  });
-
-  return { decision, order };
+  if (decision.outcome !== "ALLOW") return { decision, order: null };
+  return { decision, order: await placeOrder(signed.mandate, request, urls) };
 }

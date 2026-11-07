@@ -4,4 +4,5 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 rm -f audit.jsonl approvals.json paypal-events.jsonl revoked.json
-echo "Demo state cleared. Run 'npm run demo:mcp' to repopulate."
+# The saved wallet and signed mandates are kept: they are set up once, not per demo.
+echo "Demo state cleared. Run 'npm run demo' to repopulate."

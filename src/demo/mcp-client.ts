@@ -9,8 +9,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 const transport = new StdioClientTransport({
   command: "npx",
   args: ["tsx", "--env-file=.env", "src/mcp/server.ts"],
-  env: { ...(process.env as Record<string, string>), // Respect an explicitly chosen mandate; the fixed one is only a default.
-    SPENDWARD_MANDATE: process.env.SPENDWARD_MANDATE ?? "src/mandates/demo.json" },
+  env: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => v !== undefined && k !== "MANDATE_PRIVATE_KEY")) as Record<string, string>,
 });
 
 const client = new Client({ name: "spendward-demo", version: "0.1.0" });

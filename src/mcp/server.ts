@@ -11,7 +11,6 @@
  * can invoke all of them. Spendward narrows that surface to what its principal
  * actually authorized.
  */
-import { readFileSync } from "node:fs";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -19,21 +18,28 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import type { SignedMandate } from "../lib/mandate.js";
 import type { PaymentRequest } from "../lib/policy.js";
 import { evaluate } from "../lib/policy.js";
-import { createOrder, captureOrder, getOrder } from "../lib/paypal.js";
-import { record, spentUnder } from "../lib/audit.js";
+import { captureOrder, getOrder, type Order } from "../lib/paypal.js";
+import { record } from "../lib/audit.js";
 import { park } from "../lib/approvals.js";
-import { revokedAt } from "../lib/revocations.js";
+import { active, ledgerFor } from "../lib/mandates.js";
+import { placeOrder, recordPayment } from "../lib/checkout.js";
 import { search } from "../demo/catalog.js";
+import { planted } from "../demo/planted.js";
 import * as channel3 from "../lib/channel3.js";
 
-function loadMandate(): SignedMandate {
-  const path = process.env.SPENDWARD_MANDATE;
-  if (!path) throw new Error("SPENDWARD_MANDATE must point at a signed mandate file");
-  return JSON.parse(readFileSync(path, "utf8")) as SignedMandate;
+// This process is the enforcement point. It verifies mandates; it must never
+// be able to issue one, so the principal's private key is dropped on arrival
+// even if a careless launcher passed it along.
+delete process.env.MANDATE_PRIVATE_KEY;
+
+/** The mandate in force right now. Read per call, so switching it in the dashboard takes effect at once. */
+function current(): SignedMandate {
+  const m = active();
+  if (!m) throw new Error("No active mandate. Sign one in the dashboard or run `npm run mint`.");
+  return m;
 }
 
-const mandate = loadMandate();
-const agent = mandate.mandate.agent;
+const origin = () => process.env.PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
 
 /** What the agent is told when Spendward refuses. Structured so the model can
  *  explain the refusal to its user rather than silently retrying. */
@@ -62,9 +68,11 @@ function refusal(decision: ReturnType<typeof evaluate>, pendingId?: string) {
 async function guarded<T>(
   tool: string,
   request: PaymentRequest | null,
-  act: () => Promise<T>,
+  act: (mandate: SignedMandate) => Promise<T>,
   describe: (result: T) => string,
 ) {
+  const mandate = current();
+  const agent = mandate.mandate.agent;
   // Tools that move no money still need their grant checked, so they are
   // evaluated against a zero-value probe. The probe is never recorded -- the
   // audit trail would otherwise show a USD 0.00 payment that never existed.
@@ -79,7 +87,7 @@ async function guarded<T>(
     isSubscription: false,
   };
 
-  const decision = evaluate(mandate, probe, { spent: spentUnder(mandate.mandate.id), revokedAt: revokedAt(mandate.mandate.id) });
+  const decision = evaluate(mandate, probe, ledgerFor(mandate, request?.tool === "create_order" ? request.merchant : null));
 
   if (decision.outcome !== "ALLOW") {
     record({ agent, tool, decision, request, paypalOrderId: null });
@@ -94,7 +102,7 @@ async function guarded<T>(
 
   let result: T;
   try {
-    result = await act();
+    result = await act(mandate);
   } catch (err) {
     // Authorized, attempted, refused downstream. Leaving this out would make
     // the audit trail claim fewer calls were made than actually were.
@@ -106,7 +114,12 @@ async function guarded<T>(
     typeof result === "object" && result !== null && "id" in result
       ? String((result as { id: unknown }).id)
       : null;
-  record({ agent, tool, decision, request, paypalOrderId: orderId });
+  const order = tool === "create_order" ? (result as unknown as Order) : null;
+  record({ agent, tool, decision, request, paypalOrderId: orderId, payeeAccount: order?.payee ?? null });
+  // Paid from the saved wallet as the order was created: money has moved.
+  if (order?.captured && request) {
+    recordPayment({ agent, mandateId: mandate.mandate.id, request, orderId: order.id, payee: order.payee });
+  }
 
   return { content: [{ type: "text" as const, text: describe(result) }] };
 }
@@ -127,9 +140,11 @@ server.registerTool(
   async (args) => {
     // Live catalogue when a key is present, fixed one otherwise, so the
     // benchmark stays reproducible without a network call.
-    const results = channel3.isEnabled()
+    const found = channel3.isEnabled()
       ? await channel3.search(args.query).catch(() => search(args.query))
       : search(args.query);
+    // Demo only: a planted listing, standing in for a compromised seller page.
+    const results = [...planted(args.query), ...found];
     return {
       content: [
         {
@@ -172,9 +187,13 @@ server.registerTool(
           }),
         )
         .max(50),
-      merchant: z.string().describe("The merchant being paid."),
-      category: z.string().describe("The product category."),
-      payee: z.string().describe("The party that will actually receive the funds."),
+      merchant: z
+        .string()
+        .describe("The merchant selling the item, copied exactly from the listing's merchant field (for example bestbuy.com)."),
+      category: z.string().describe("The product category, copied from the listing."),
+      payee: z
+        .string()
+        .describe("Who receives the money. For an ordinary purchase this is the same value as merchant, copied exactly."),
       shippingCost: z.number().default(0).optional(),
       discount: z.number().default(0).optional(),
       isSubscription: z
@@ -183,8 +202,10 @@ server.registerTool(
         .optional()
         .describe("True if this order enrolls the buyer in a recurring charge."),
       notes: z.string().optional(),
-      returnUrl: z.string().default("http://localhost:3000/paypal/return").optional(),
-      cancelUrl: z.string().default("http://localhost:3000/paypal/cancel").optional(),
+      // Accepted for compatibility with PayPal's schema and ignored: where the
+      // buyer is sent after checkout is not the agent's decision.
+      returnUrl: z.string().optional(),
+      cancelUrl: z.string().optional(),
       sourceContext: z
         .string()
         .optional()
@@ -211,15 +232,11 @@ server.registerTool(
     return guarded(
       "create_order",
       request,
-      () =>
-        createOrder({
-          amount,
-          currency: args.currencyCode,
-          description: args.items.map((i) => i.name).join(", "),
-          returnUrl: args.returnUrl ?? "http://localhost:3000/paypal/return",
-          cancelUrl: args.cancelUrl ?? "http://localhost:3000/paypal/cancel",
-        }),
-      (o) => `Order ${o.id} created (${o.status}).\nApprove at: ${o.approveUrl ?? "n/a"}`,
+      (m) => placeOrder(m.mandate, request, { returnUrl: `${origin()}/paypal/return`, cancelUrl: `${origin()}/paypal/cancel` }),
+      (o) =>
+        o.captured
+          ? `Order ${o.id} paid (${o.status}) from the user's saved PayPal wallet, to ${o.payeeName}. Nothing more to do.`
+          : `Order ${o.id} created (${o.status}), payable to ${o.payeeName}.\nThe user approves it at: ${o.approveUrl ?? "n/a"}`,
     );
   },
 );

@@ -8,13 +8,19 @@ import { dirname, join } from "node:path";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 
-import { entries, verifyChain, record, spentUnder, spend, orders } from "../lib/audit.js";
+import { z } from "zod";
+import { entries, verifyChain, record, spend, orders } from "../lib/audit.js";
 import { list as listApprovals, get as getApproval, decide, markCaptured } from "../lib/approvals.js";
-import { createOrder, captureOrder, getAccessToken } from "../lib/paypal.js";
-import type { SignedMandate } from "../lib/mandate.js";
+import { captureOrder, getAccessToken, startWalletSetup, finishWalletSetup, deleteWallet } from "../lib/paypal.js";
+import { principalKey, signMandate, type Mandate } from "../lib/mandate.js";
 import { recordEvent, recentEvents } from "../lib/events.js";
 import { evaluate } from "../lib/policy.js";
 import { revoke, revokedAt } from "../lib/revocations.js";
+import { active, activate, all as allMandates, byId, ledgerFor, save } from "../lib/mandates.js";
+import { directory, resolvePayee } from "../lib/merchants.js";
+import { placeOrder, recordPayment } from "../lib/checkout.js";
+import { wallet, saveWallet, forgetWallet } from "../lib/wallet.js";
+import { draftMandate, DraftSchema } from "../lib/drafter.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -28,15 +34,6 @@ function publicOrigin(requestUrl: string): string {
 }
 const app = new Hono();
 
-function mandate(): SignedMandate | null {
-  const path = process.env.SPENDWARD_MANDATE;
-  if (!path) return null;
-  try {
-    return JSON.parse(readFileSync(path, "utf8")) as SignedMandate;
-  } catch {
-    return null;
-  }
-}
 
 // Render and most platforms probe /healthz by default. Answer it so a healthy
 // service is not marked down over a missing route.
@@ -45,26 +42,42 @@ app.get("/healthz", (c) => c.json({ ok: true }));
 app.get("/", (c) => c.html(readFileSync(join(here, "dashboard.html"), "utf8")));
 
 app.get("/api/state", (c) => {
-  const m = mandate()?.mandate ?? null;
+  const m = active()?.mandate ?? null;
+  const w = wallet();
   return c.json({
     mandate: m,
     // Computed by the same function the policy engine uses. The dashboard must
     // not do its own arithmetic, or the figure a user reads stops matching the
     // figure their limits are enforced against.
     revokedAt: m ? revokedAt(m.id) : null,
-    spent: m ? spentUnder(m.id) : 0,
-    spend: m ? spend(m.id) : { collected: 0, held: 0 },
+    spent: m ? ledgerFor(active()!, null).spent : 0,
+    spend: m ? spend(m.id, Date.now(), m.budgetPeriod) : { collected: 0, held: 0 },
     // Every order Spendward let through that nobody has paid for yet -- allowed
     // outright or approved by you. Both need the same thing: a buyer and a capture.
     toCollect: orders().filter((o) => !o.captured && o.held).map((o) => ({
       orderId: o.orderId, amount: o.amount, currency: o.currency, merchant: o.merchant, agent: o.agent, at: o.at,
       approved: listApprovals().some((a) => a.paypalOrderId === o.orderId),
+      payee: o.source.payeeAccount,
     })),
     collectedCount: orders().filter((o) => o.captured).length,
     audit: entries(),
-    approvals: listApprovals(),
+    // Each waiting approval carries where its money would go, resolved now, so
+    // the principal approves a destination and not just a shop name.
+    approvals: listApprovals().map((a) => {
+      const owner = byId(a.mandateId);
+      const payee = owner ? resolvePayee(owner.mandate, a.request.merchant) : null;
+      return { ...a, payee };
+    }),
     chain: verifyChain(),
     events: recentEvents(),
+    wallet: w ? { email: w.email, connectedAt: w.connectedAt, vaultId: `${w.vaultId.slice(0, 4)}…` } : null,
+    mandates: allMandates().map((s) => ({
+      id: s.mandate.id, issuedAt: s.mandate.issuedAt, expiresAt: s.mandate.expiresAt,
+      maxTransactionAmount: s.mandate.maxTransactionAmount, maxTotalAmount: s.mandate.maxTotalAmount,
+      budgetPeriod: s.mandate.budgetPeriod, allowedMerchants: s.mandate.allowedMerchants,
+      currency: s.mandate.currency, active: s.mandate.id === m?.id, revokedAt: revokedAt(s.mandate.id),
+    })),
+    merchants: Object.fromEntries(Object.entries(directory()).map(([k, v]) => [k, v.name])),
   });
 });
 
@@ -73,19 +86,15 @@ app.post("/api/approvals/:id/approve", async (c) => {
   if (!pending) return c.json({ error: "not found" }, 404);
   if (pending.status !== "PENDING") return c.json({ error: "already decided" }, 409);
 
+  // Judged against the mandate it was requested under, whichever is active now.
+  const signed = byId(pending.mandateId);
+  if (!signed) return c.json({ error: `mandate ${pending.mandateId} no longer exists` }, 409);
+
   // Run the rules again at the moment of approval. Time has passed since the
   // request was parked: the budget may have filled, the mandate may have
   // expired or been revoked. The principal can waive what they were asked
   // about, not whatever has changed since.
-  const signed = mandate();
-  if (!signed || signed.mandate.id !== pending.mandateId) {
-    const hint = pending.mandateId?.includes("live") ? "npm run web:live" : "npm run web";
-    return c.json({
-      error: `This request was made under mandate ${pending.mandateId}, but this dashboard is running ` +
-        `${signed ? signed.mandate.id : "without a mandate"}. Restart it with "${hint}" to decide it.`,
-    }, 409);
-  }
-  const now = evaluate(signed, pending.request, { spent: spentUnder(signed.mandate.id), revokedAt: revokedAt(signed.mandate.id) });
+  const now = evaluate(signed, pending.request, ledgerFor(signed, pending.request.merchant));
   if (now.outcome === "BLOCK") {
     record({ agent: pending.agent, tool: "create_order", decision: now, request: pending.request, paypalOrderId: null });
     decide(pending.id, "REJECTED");
@@ -94,13 +103,17 @@ app.post("/api/approvals/:id/approve", async (c) => {
 
   // The order is only created now. Until the principal approved, PayPal had
   // seen nothing at all.
-  const order = await createOrder({
-    amount: pending.request.amount,
-    currency: pending.request.currency,
-    description: `${pending.request.merchant} - ${pending.request.category}`,
-    returnUrl: `${publicOrigin(c.req.url)}/paypal/return`,
-    cancelUrl: `${publicOrigin(c.req.url)}/paypal/cancel`,
-  });
+  let order;
+  try {
+    order = await placeOrder(signed.mandate, pending.request, {
+      returnUrl: `${publicOrigin(c.req.url)}/paypal/return`,
+      cancelUrl: `${publicOrigin(c.req.url)}/paypal/cancel`,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    record({ agent: pending.agent, tool: "create_order", decision: { outcome: "ALLOW", violations: pending.violations, mandateId: pending.mandateId }, request: pending.request, paypalOrderId: null, error: message.slice(0, 300) });
+    return c.json({ error: `PayPal refused the order: ${message.slice(0, 200)}` }, 502);
+  }
 
   // The approval is itself a spend event. Without this the cumulative cap never
   // sees approved escalations, and approving repeatedly would bypass it
@@ -111,9 +124,14 @@ app.post("/api/approvals/:id/approve", async (c) => {
     decision: { outcome: "ALLOW", violations: pending.violations, mandateId: pending.mandateId },
     request: pending.request,
     paypalOrderId: order.id,
+    payeeAccount: order.payee,
   });
-
-  return c.json(decide(pending.id, "APPROVED", order) ?? { error: "race" });
+  const decided = decide(pending.id, "APPROVED", order);
+  if (order.captured) {
+    recordPayment({ agent: pending.agent, mandateId: pending.mandateId, request: pending.request, orderId: order.id, payee: order.payee });
+    markCaptured(pending.id);
+  }
+  return c.json({ ...decided, paid: order.captured, payeeName: order.payeeName });
 });
 
 /**
@@ -129,15 +147,15 @@ async function collect(orderId: string): Promise<{ ok: true; status: string } | 
   try {
     const result = await captureOrder(orderId);
     const src = order.source;
-    record({
+    recordPayment({
       agent: order.agent,
-      tool: "pay_order",
-      decision: { outcome: "ALLOW", violations: [], mandateId: order.mandateId },
+      mandateId: order.mandateId,
       request: {
         tool: "pay_order", amount: order.amount, currency: src.currency ?? "USD", quantity: src.quantity ?? 0,
         merchant: src.merchant ?? "", category: src.category ?? "", recipient: src.recipient ?? "", isSubscription: false,
       },
-      paypalOrderId: result.id,
+      orderId: result.id,
+      payee: result.payee ?? src.payeeAccount,
     });
     const approval = listApprovals().find((a) => a.paypalOrderId === orderId);
     if (approval) markCaptured(approval.id);
@@ -173,9 +191,108 @@ app.post("/api/approvals/:id/capture", async (c) => {
  * does not undo old spending.
  */
 app.post("/api/mandate/revoke", (c) => {
-  const signed = mandate();
-  if (!signed) return c.json({ error: "no mandate loaded" }, 404);
+  const signed = active();
+  if (!signed) return c.json({ error: "no active mandate" }, 404);
   return c.json({ mandateId: signed.mandate.id, revokedAt: revoke(signed.mandate.id) });
+});
+
+// --- Mandates ------------------------------------------------------------------
+// The dashboard is the principal's console: it is where mandates are drafted,
+// read, signed and switched. It holds the signing key; the MCP server the
+// agent talks to does not.
+
+app.post("/api/mandates/draft", async (c) => {
+  const { text } = (await c.req.json().catch(() => ({}))) as { text?: string };
+  if (!text?.trim()) return c.json({ error: "Describe what the agent may buy." }, 400);
+  try {
+    return c.json(await draftMandate(text));
+  } catch (err) {
+    return c.json({ error: `Could not draft a mandate: ${(err instanceof Error ? err.message : String(err)).slice(0, 200)}` }, 502);
+  }
+});
+
+app.post("/api/mandates", async (c) => {
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+  const parsed = DraftSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, 400);
+  const d = parsed.data;
+  if (d.approvalCeiling < d.maxTransactionAmount) return c.json({ error: "The approval ceiling cannot be below the per-payment limit." }, 400);
+  const dir = directory();
+  const unknown = d.allowedMerchants.filter((m) => !dir[m]);
+  if (unknown.length) return c.json({ error: `No PayPal account on record for ${unknown.join(", ")}. Add it to merchants.json first.` }, 400);
+
+  const mandate: Mandate = {
+    id: `mnd_${Date.now().toString(36)}`,
+    principal: process.env.SPENDWARD_PRINCIPAL ?? "you",
+    // Which agent this governs is the principal's choice, not the drafter's.
+    agent: typeof body?.agent === "string" && /^[\w.-]{1,40}$/.test(body.agent) ? body.agent : "shopper-01",
+    issuedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + d.expiresInDays * 864e5).toISOString(),
+    currency: "USD",
+    maxTransactionAmount: d.maxTransactionAmount,
+    maxTotalAmount: d.maxTotalAmount,
+    budgetPeriod: d.budgetPeriod,
+    approvalCeiling: d.approvalCeiling,
+    maxQuantity: d.maxQuantity,
+    allowedMerchants: d.allowedMerchants,
+    // The signature covers where each merchant's money goes, not just its name.
+    payees: Object.fromEntries(d.allowedMerchants.map((m) => [m, dir[m]!.payee])),
+    allowedCategories: d.allowedCategories,
+    allowSubscriptions: d.allowSubscriptions,
+    allowedTools: ["search_products", "create_order", "get_order", "pay_order"],
+  };
+  save(signMandate(mandate, principalKey()));
+  activate(mandate.id);
+  return c.json({ id: mandate.id });
+});
+
+app.post("/api/mandates/:id/activate", (c) => {
+  const id = c.req.param("id");
+  if (!byId(id)) return c.json({ error: "not found" }, 404);
+  if (revokedAt(id)) return c.json({ error: "That mandate is revoked; sign a new one instead." }, 409);
+  activate(id);
+  return c.json({ id });
+});
+
+// --- Saved wallet (PayPal Vault) -------------------------------------------------
+
+app.post("/api/wallet/connect", async (c) => {
+  try {
+    const origin = publicOrigin(c.req.url);
+    const setup = await startWalletSetup(`${origin}/paypal/wallet-return`, `${origin}/paypal/cancel`);
+    return c.json({ approveUrl: setup.approveUrl });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({
+      error: message.includes("NOT_AUTHORIZED")
+        ? "Your PayPal app is not allowed to save payment methods yet. In the developer dashboard, open the app and turn on Vault (\"Save payment methods\")."
+        : message.slice(0, 240),
+    }, 502);
+  }
+});
+
+app.get("/paypal/wallet-return", async (c) => {
+  const token = c.req.query("approval_token_id") ?? c.req.query("token") ?? "";
+  let message: string;
+  try {
+    const result = await finishWalletSetup(token);
+    saveWallet({ ...result, connectedAt: new Date().toISOString() });
+    message = `Wallet connected${result.email ? ` (${result.email})` : ""}. Payments your mandate allows will now be charged to it without a checkout page.`;
+  } catch (err) {
+    message = `Could not save the wallet: ${(err instanceof Error ? err.message : String(err)).slice(0, 200)}`;
+  }
+  return c.html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wallet</title><body style="font-family:system-ui;padding:2.5rem 1rem;max-width:34rem;margin:0 auto;background:#0d1117;color:#e7edf3">
+    <h2 style="margin:0 0 .5rem">PayPal wallet</h2><p style="color:#9aa7b4">${message.replace(/</g, "&lt;")}</p>
+    <p><a href="/" style="color:#4d8bff">Back to Spendward</a></p></body>`);
+});
+
+app.post("/api/wallet/disconnect", async (c) => {
+  const w = wallet();
+  if (!w) return c.json({ ok: true });
+  try { await deleteWallet(w.vaultId); } catch { /* already gone at PayPal */ }
+  forgetWallet();
+  return c.json({ ok: true });
 });
 
 app.post("/api/approvals/:id/reject", (c) => {

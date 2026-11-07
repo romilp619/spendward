@@ -55,3 +55,24 @@ test("an order PayPal rejected spends nothing", () => {
   assert.equal(spentUnder("mnd_test"), 0);
   assert.equal(orders().length, 0);
 });
+
+test("with AUDIT_KEY set, a rewritten log cannot be re-chained without the key", async () => {
+  const { createHash } = await import("node:crypto");
+  const { readFileSync, writeFileSync } = await import("node:fs");
+  const { record: rec, verifyChain: check } = await import("../src/lib/audit.js");
+  const { freshLog: fresh, req: r } = await import("./helpers.js");
+  process.env.AUDIT_KEY = "k".repeat(64);
+  try {
+    const file = fresh();
+    rec({ agent: "a", tool: "create_order", decision: { outcome: "BLOCK", violations: [], mandateId: "m" }, request: r({ amount: 999 }), paypalOrderId: null });
+    assert.equal(check().keyed, true);
+    // An attacker edits the amount and recomputes the hash the obvious way.
+    const e = JSON.parse(readFileSync(file, "utf8").trim());
+    e.amount = 1; delete e.hash;
+    e.hash = createHash("sha256").update(JSON.stringify(e)).digest("hex");
+    writeFileSync(file, JSON.stringify(e) + "\n");
+    assert.equal(check().valid, false);
+  } finally {
+    delete process.env.AUDIT_KEY;
+  }
+});

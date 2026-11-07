@@ -11,3 +11,6 @@ redteam-catalog.json
 approvals.json
 paypal-events.jsonl
 revoked.json
+mandates/
+merchants.json
+wallet.json

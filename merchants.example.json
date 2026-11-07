@@ -1,0 +1,6 @@
+{
+  "TechStore": { "name": "TechStore (sandbox)", "payee": "PASTE_SANDBOX_MERCHANT_ID" },
+  "AudioWorld": { "name": "AudioWorld (sandbox)", "payee": "PASTE_SANDBOX_MERCHANT_ID" },
+  "bestbuy.com": { "name": "Best Buy (sandbox)", "payee": "PASTE_SANDBOX_MERCHANT_ID" },
+  "macys.com": { "name": "Macy's (sandbox)", "payee": "PASTE_SANDBOX_MERCHANT_ID" }
+}

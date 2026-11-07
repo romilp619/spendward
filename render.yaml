@@ -9,8 +9,6 @@ services:
     envVars:
       - key: PAYPAL_API_BASE
         value: https://api-m.sandbox.paypal.com
-      - key: SPENDWARD_MANDATE
-        value: src/mandates/demo.json
       # Set in the Render dashboard, not here -- these are secrets.
       - key: PAYPAL_CLIENT_ID
         sync: false
@@ -18,7 +16,11 @@ services:
         sync: false
       - key: PAYPAL_WEBHOOK_ID
         sync: false
-      - key: MANDATE_SIGNING_KEY
+      - key: MANDATE_PRIVATE_KEY
+        sync: false
+      - key: MANDATE_PUBLIC_KEY
+        sync: false
+      - key: AUDIT_KEY
         sync: false
       - key: LLM_BASE_URL
         sync: false

@@ -1,19 +1,21 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { signMandate, type Mandate } from "../src/lib/mandate.js";
+import { generateKeys, signMandate, type Mandate } from "../src/lib/mandate.js";
 import type { PaymentRequest } from "../src/lib/policy.js";
 
-process.env.MANDATE_SIGNING_KEY = "test-key-not-a-secret";
+const keys = generateKeys();
+process.env.MANDATE_PRIVATE_KEY = keys.privateKey;
+process.env.MANDATE_PUBLIC_KEY = keys.publicKey;
 
-export const KEY = process.env.MANDATE_SIGNING_KEY;
+export const KEY = keys.privateKey;
 
 export function mandate(over: Partial<Mandate> = {}): Mandate {
   return {
     id: "mnd_test", principal: "tester", agent: "shopper-01",
     issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z",
-    currency: "USD", maxTransactionAmount: 250, maxTotalAmount: 1000, approvalCeiling: 300, maxQuantity: 1,
-    allowedMerchants: ["bestbuy.com"], allowedCategories: [], allowSubscriptions: false,
+    currency: "USD", maxTransactionAmount: 250, maxTotalAmount: 1000, budgetPeriod: "none", approvalCeiling: 300, maxQuantity: 1,
+    allowedMerchants: ["bestbuy.com"], payees: { "bestbuy.com": "TESTMERCHANT1" }, allowedCategories: [], allowSubscriptions: false,
     allowedTools: ["search_products", "create_order", "get_order", "pay_order"],
     ...over,
   };
