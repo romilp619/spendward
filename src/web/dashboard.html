@@ -152,6 +152,9 @@
   input[type=search]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   #grid { height: 420px; }
+  /* A short trail sizes to its rows; AG Grid otherwise reserves room for an overlay. */
+  #grid .ag-layout-auto-height .ag-center-cols-viewport,
+  #grid .ag-layout-auto-height .ag-center-cols-container { min-height: 0 !important; }
 
   /* Tabs */
   .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 22px; overflow-x: auto; scrollbar-width: none; }
