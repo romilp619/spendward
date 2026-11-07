@@ -237,7 +237,7 @@ function paint() {
       <div class="sub">per transaction · <span class="num">${m ? money(m.maxTotalAmount, m.currency) : "—"}</span> total</div></div>
     <div class="card"><h2>Spent</h2>
       <div class="big num">${money(spent, m?.currency)}</div>
-      <div class="sub">${m ? `<span class="num">${money(m.maxTotalAmount - spent, m.currency)}</span> remaining` : ""}</div>
+      <div class="sub">${m ? `<span class="num">${money(state.spend?.collected ?? 0, m.currency)}</span> paid · <span class="num">${money(state.spend?.held ?? 0, m.currency)}</span> awaiting payment` : ""}</div>
       ${m ? `<div class="meter${spent > m.maxTotalAmount ? " over" : ""}" role="img"
                aria-label="${Math.round((spent / m.maxTotalAmount) * 100)} percent of the mandate used">
                <i style="width:${Math.min(100, (spent / m.maxTotalAmount) * 100)}%"></i></div>` : ""}</div>
@@ -276,8 +276,10 @@ function paint() {
     </div>`;
 
   const pending  = state.approvals.filter(x => x.status === "PENDING");
-  const toCapture = state.approvals.filter(x => x.status === "APPROVED" && x.paypalOrderId);
-  const capturedApprovals = state.approvals.filter(x => x.status === "CAPTURED");
+  // Every order Spendward let through that nobody has paid for yet: allowed
+  // outright or approved by you. Both wait on the same thing, a buyer.
+  const toCapture = state.toCollect ?? [];
+  const collected = state.collectedCount ?? 0;
 
   const section = document.getElementById("pending-section");
   section.classList.toggle("urgent", pending.length > 0);
@@ -286,18 +288,18 @@ function paint() {
 
   document.getElementById("pending").innerHTML = (pending.length === 0 && toCapture.length === 0
     ? `<p class="empty">${tick()} Nothing needs you right now.${
-        capturedApprovals.length ? ` ${capturedApprovals.length} payment${capturedApprovals.length > 1 ? "s" : ""} captured.` : ""}</p>` : "") +
-    toCapture.map(p => `
+        collected ? ` ${collected} payment${collected > 1 ? "s" : ""} captured.` : ""}</p>` : "") +
+    toCapture.map(o => `
       <article class="approval" style="border-color:var(--accent);background:transparent">
         <div class="head">
-          <div><strong>${esc(p.request.merchant)}</strong> · approved by you
-            <div class="sub">order <code>${esc(p.paypalOrderId)}</code></div></div>
-          <div class="amount num">${money(p.request.amount, p.request.currency)}</div>
+          <div><strong>${esc(o.merchant)}</strong> · ${o.approved ? "approved by you" : "allowed"}, waiting for the buyer
+            <div class="sub">order <code>${esc(o.orderId)}</code></div></div>
+          <div class="amount num">${money(o.amount, o.currency)}</div>
         </div>
         <div class="actions">
-          <a href="${esc(p.approveUrl)}" target="_blank" rel="noopener"><button>Open PayPal checkout</button></a>
-          <button class="primary" data-capture="${p.id}">Capture payment</button>
-          <span class="sub" data-result="${p.id}" role="status"></span>
+          <a href="https://www.sandbox.paypal.com/checkoutnow?token=${encodeURIComponent(o.orderId)}" target="_blank" rel="noopener"><button>Open PayPal checkout</button></a>
+          <button class="primary" data-capture="${esc(o.orderId)}">Capture payment</button>
+          <span class="sub" data-result="${esc(o.orderId)}" role="status"></span>
         </div>
       </article>`).join("") +
     pending.map(p => `
@@ -393,12 +395,12 @@ document.getElementById("pending").addEventListener("click", async e => {
   const id = d.approve ?? d.reject ?? d.capture;
 
   e.target.disabled = true;
-  const res = await fetch(`/api/approvals/${id}/${action}`, { method: "POST" });
+  const res = await fetch(action === "capture" ? `/api/orders/${encodeURIComponent(id)}/capture` : `/api/approvals/${id}/${action}`, { method: "POST" });
   const body = await res.json().catch(() => ({}));
 
   if (action === "capture") {
     const slot = document.querySelector(`[data-result="${id}"]`);
-    if (slot) slot.textContent = res.ok ? `captured — ${body.status}` : body.error;
+    if (slot) slot.textContent = res.ok ? `captured: ${body.status}` : body.error;
     e.target.disabled = false;
     if (!res.ok) return;
   }

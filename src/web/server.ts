@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 
-import { entries, verifyChain, record, spentUnder } from "../lib/audit.js";
+import { entries, verifyChain, record, spentUnder, spend, orders } from "../lib/audit.js";
 import { list as listApprovals, get as getApproval, decide, markCaptured } from "../lib/approvals.js";
 import { createOrder, captureOrder, getAccessToken } from "../lib/paypal.js";
 import type { SignedMandate } from "../lib/mandate.js";
@@ -50,6 +50,14 @@ app.get("/api/state", (c) => {
     // not do its own arithmetic, or the figure a user reads stops matching the
     // figure their limits are enforced against.
     spent: m ? spentUnder(m.id) : 0,
+    spend: m ? spend(m.id) : { collected: 0, held: 0 },
+    // Every order Spendward let through that nobody has paid for yet -- allowed
+    // outright or approved by you. Both need the same thing: a buyer and a capture.
+    toCollect: orders().filter((o) => !o.captured && o.held).map((o) => ({
+      orderId: o.orderId, amount: o.amount, currency: o.currency, merchant: o.merchant, agent: o.agent, at: o.at,
+      approved: listApprovals().some((a) => a.paypalOrderId === o.orderId),
+    })),
+    collectedCount: orders().filter((o) => o.captured).length,
     audit: entries(),
     approvals: listApprovals(),
     chain: verifyChain(),
@@ -87,36 +95,53 @@ app.post("/api/approvals/:id/approve", async (c) => {
 });
 
 /**
- * Captures an approved order. PayPal refuses this until the buyer has approved
- * at checkout, so the dashboard surfaces that error rather than hiding it.
+ * Collects payment for an order Spendward let through. One path for every way
+ * an order gets here -- allowed outright, or approved after an escalation --
+ * and for every trigger: the dashboard button, the return page, the webhook.
+ * A second capture of the same order is refused before PayPal is contacted.
  */
+async function collect(orderId: string): Promise<{ ok: true; status: string } | { ok: false; code: 404 | 409; error: string }> {
+  const order = orders().find((o) => o.orderId === orderId);
+  if (!order) return { ok: false, code: 404, error: "Spendward did not create this order" };
+  if (order.captured) return { ok: false, code: 409, error: "already captured" };
+  try {
+    const result = await captureOrder(orderId);
+    const src = order.source;
+    record({
+      agent: order.agent,
+      tool: "pay_order",
+      decision: { outcome: "ALLOW", violations: [], mandateId: order.mandateId },
+      request: {
+        tool: "pay_order", amount: order.amount, currency: src.currency ?? "USD", quantity: src.quantity ?? 0,
+        merchant: src.merchant ?? "", category: src.category ?? "", recipient: src.recipient ?? "", isSubscription: false,
+      },
+      paypalOrderId: result.id,
+    });
+    const approval = listApprovals().find((a) => a.paypalOrderId === orderId);
+    if (approval) markCaptured(approval.id);
+    return { ok: true, status: result.status };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false, code: 409,
+      error: message.includes("ORDER_NOT_APPROVED")
+        ? "The buyer has not approved this order at PayPal yet. Open the checkout link first."
+        : message,
+    };
+  }
+}
+
+app.post("/api/orders/:id/capture", async (c) => {
+  const r = await collect(c.req.param("id"));
+  return r.ok ? c.json({ status: r.status }) : c.json({ error: r.error }, r.code);
+});
+
+// Kept for anything still calling the approval-shaped route.
 app.post("/api/approvals/:id/capture", async (c) => {
   const pending = getApproval(c.req.param("id"));
   if (!pending?.paypalOrderId) return c.json({ error: "no order to capture" }, 404);
-  if (pending.status === "CAPTURED") return c.json({ error: "already captured" }, 409);
-  try {
-    const result = await captureOrder(pending.paypalOrderId);
-    record({
-      agent: pending.agent,
-      tool: "pay_order",
-      decision: { outcome: "ALLOW", violations: [], mandateId: pending.mandateId },
-      request: pending.request,
-      paypalOrderId: result.id,
-    });
-    markCaptured(pending.id);
-    return c.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const notApproved = message.includes("ORDER_NOT_APPROVED");
-    return c.json(
-      {
-        error: notApproved
-          ? "The buyer has not approved this order at PayPal yet. Open the checkout link first."
-          : message,
-      },
-      409,
-    );
-  }
+  const r = await collect(pending.paypalOrderId);
+  return r.ok ? c.json({ status: r.status }) : c.json({ error: r.error }, r.code);
 });
 
 app.post("/api/approvals/:id/reject", (c) => {
@@ -213,28 +238,14 @@ app.post("/paypal/webhook", async (c) => {
  */
 async function autoCapture(orderId: string | null): Promise<void> {
   if (!orderId) return;
-  const pending = listApprovals().find((a) => a.paypalOrderId === orderId);
-  if (!pending || pending.status !== "APPROVED") return;
-
-  try {
-    const result = await captureOrder(orderId);
-    record({
-      agent: pending.agent,
-      tool: "pay_order",
-      decision: { outcome: "ALLOW", violations: [], mandateId: pending.mandateId },
-      request: pending.request,
-      paypalOrderId: result.id,
-    });
-    markCaptured(pending.id);
-    console.log(`[webhook] auto-captured ${orderId} (${result.status})`);
-  } catch (err) {
-    console.log(`[webhook] auto-capture of ${orderId} failed: ${String(err)}`);
-  }
+  const r = await collect(orderId);
+  if (r.ok) console.log(`[webhook] auto-captured ${orderId} (${r.status})`);
+  else if (r.code !== 404) console.log(`[webhook] auto-capture of ${orderId} skipped: ${r.error}`);
 }
 
 app.get("/paypal/return", (c) => {
   const token = c.req.query("token") ?? "";
-  const pending = listApprovals().find((a) => a.paypalOrderId === token);
+  const order = orders().find((o) => o.orderId === token);
   return c.html(
     `<!doctype html><meta charset="utf-8">
      <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -244,19 +255,19 @@ app.get("/paypal/return", (c) => {
        <h2 style="margin:0 0 .5rem">Payment approved at PayPal</h2>
        <p style="color:#9aa7b4">Order <code>${token}</code> is ready to capture.</p>
        ${
-         pending?.status === "CAPTURED"
+         order?.captured
            ? `<p style="color:#3fb97a;font-weight:600">Captured automatically.</p>`
-           : pending
+           : order
            ? `<button id="cap" style="font:inherit;font-weight:600;padding:.6rem 1.1rem;border:0;
                      border-radius:7px;background:#4d8bff;color:#fff;cursor:pointer">Capture payment</button>
               <p id="out" role="status" style="color:#9aa7b4"></p>
               <script>
                 document.getElementById("cap").onclick = async (e) => {
                   e.target.disabled = true;
-                  const r = await fetch("/api/approvals/${pending.id}/capture", { method: "POST" });
+                  const r = await fetch("/api/orders/${order.orderId}/capture", { method: "POST" });
                   const b = await r.json();
                   document.getElementById("out").textContent =
-                    r.ok ? "Captured \u2014 " + b.status : b.error;
+                    r.ok ? "Captured: " + b.status : b.error;
                   e.target.disabled = !r.ok;
                 };
               <\/script>`

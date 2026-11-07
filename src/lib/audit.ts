@@ -92,17 +92,72 @@ export function entries(): AuditEntry[] {
 }
 
 /**
- * Total committed spend under a mandate.
- *
- * Only order creation counts. A capture moves money that was already committed
- * when the order was created, so counting both would bill the mandate twice for
- * one payment.
+ * How long an order that nobody has paid for keeps holding budget. PayPal does
+ * not report abandoned checkouts, so a reservation that never lapsed would let
+ * one unpaid order use up a mandate for good. SPENDWARD_RESERVE_HOURS overrides.
  */
-export function spentUnder(mandateId: string): number {
-  return readAll()
-    // An order PayPal rejected committed no money, so it spends nothing.
-    .filter((e) => e.mandateId === mandateId && e.outcome === "ALLOW" && e.tool === "create_order" && !e.error)
-    .reduce((sum, e) => sum + (e.amount ?? 0), 0);
+const reserveMs = () => Number(process.env.SPENDWARD_RESERVE_HOURS ?? 3) * 3_600_000;
+
+export interface OrderState {
+  orderId: string;
+  mandateId: string | null;
+  agent: string;
+  amount: number;
+  currency: string | null;
+  merchant: string | null;
+  at: string;
+  /** The money has moved: a pay_order was recorded for this order. */
+  captured: boolean;
+  /** Not yet paid, but recent enough to still hold budget. */
+  held: boolean;
+  /** The create_order entry, so a capture can be recorded against the same request. */
+  source: AuditEntry;
+}
+
+/**
+ * Every order Spendward let through to PayPal, whatever path it took: allowed
+ * outright, or approved after an escalation. Orders PayPal rejected are not
+ * here -- they committed no money.
+ */
+export function orders(now = Date.now()): OrderState[] {
+  const all = readAll();
+  const paid = new Set(
+    all.filter((e) => e.tool === "pay_order" && e.outcome === "ALLOW" && !e.error && e.paypalOrderId).map((e) => e.paypalOrderId),
+  );
+  return all
+    .filter((e) => e.tool === "create_order" && e.outcome === "ALLOW" && !e.error && e.paypalOrderId)
+    .map((e) => {
+      const captured = paid.has(e.paypalOrderId);
+      return {
+        orderId: e.paypalOrderId!, mandateId: e.mandateId, agent: e.agent, amount: e.amount ?? 0,
+        currency: e.currency, merchant: e.merchant, at: e.at, captured,
+        held: !captured && now - Date.parse(e.at) < reserveMs(), source: e,
+      };
+    });
+}
+
+export interface Spend {
+  /** Paid for: money that has actually moved. */
+  collected: number;
+  /** Ordered, not yet paid, still holding budget. */
+  held: number;
+}
+
+export function spend(mandateId: string, now = Date.now()): Spend {
+  const mine = orders(now).filter((o) => o.mandateId === mandateId);
+  return {
+    collected: mine.filter((o) => o.captured).reduce((s, o) => s + o.amount, 0),
+    held: mine.filter((o) => o.held).reduce((s, o) => s + o.amount, 0),
+  };
+}
+
+/**
+ * What the cumulative cap is enforced against: money that moved plus orders
+ * still waiting to be paid. Each order counts once, however it is captured.
+ */
+export function spentUnder(mandateId: string, now = Date.now()): number {
+  const s = spend(mandateId, now);
+  return Math.round((s.collected + s.held) * 100) / 100;
 }
 
 export interface ChainCheck {

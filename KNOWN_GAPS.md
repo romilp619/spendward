@@ -66,3 +66,12 @@ When Spendward allows a call and PayPal then rejects it -- an unknown order id,
 an order not yet approved by the buyer -- the attempt is written to the audit
 trail with PayPal's error, and counts toward nothing. Spendward does not retry
 or reconcile; the agent is told the call failed and decides what to do.
+
+## An unpaid order holds budget for a fixed window
+
+An order counts against the mandate from the moment it is created, so an agent
+cannot open many orders at once to get past the total. PayPal does not tell
+Spendward when a buyer abandons checkout, so an unpaid order instead stops
+holding budget after `SPENDWARD_RESERVE_HOURS` (default 3). If the buyer pays
+after that, the capture still counts -- but in the gap, the budget it held was
+briefly available to other orders.

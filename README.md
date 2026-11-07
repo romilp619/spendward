@@ -229,8 +229,17 @@ supported currency here too.
 
 ### Run
 
+**Mint your own mandates first.** The ones in `src/mandates/` are signed with the
+author's `MANDATE_SIGNING_KEY`. Under your key their signatures do not verify, so
+every request is refused with `MANDATE_SIGNATURE_INVALID` -- the system working
+correctly, but not what you want for a demo.
+
 ```bash
-npm run mint                 # issue a signed mandate
+npm run mint                 # fixed-catalogue mandate (TechStore)
+npm run mint:live            # live-catalogue mandate (bestbuy.com), for demo:live
+npm test                     # policy, signature, chain and spend tests; no network
+npm run web                  # the dashboard at localhost:3000
+npm run demo                 # the agent through five tasks, fixed catalogue
 npm run demo:spine           # policy gating a real PayPal order
 npm run demo:mcp             # the same, driven through MCP
 npm run agent -- "Buy me the Sony headphones from TechStore"
