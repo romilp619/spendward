@@ -493,10 +493,107 @@
   .toasts { right: 24px; bottom: 24px; gap: 10px; }
   .toast { padding: 13px 16px; }
 
+
+  /* ==========================================================================
+     App shell. A fixed sidebar for navigation and status; every page opens
+     with a title, a one-line purpose and its primary action. Layout and
+     type only: colours and behaviour are unchanged.
+     ========================================================================== */
+  .shell { display: grid; grid-template-columns: 256px minmax(0, 1fr); min-height: 100vh; }
+  .sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 26px;
+             padding: 26px 16px 20px; border-right: 1px solid var(--line);
+             background: color-mix(in srgb, var(--panel-solid) 55%, transparent);
+             -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); z-index: 30; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 10px; }
+  .brand .wordmark { display: grid; gap: 1px; }
+  .brand h1 { font-size: 18px; }
+  .brand .tagline { font-size: 12.5px; }
+  .brand .mark { width: 32px; height: 32px; }
+
+  .tabs { display: flex; flex-direction: column; gap: 2px; position: static; margin: 0; padding: 0; border: 0;
+          background: none; overflow: visible; box-shadow: none; }
+  .tabs.stuck { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .navlabel { font-size: 12px; color: var(--muted); padding: 0 12px; margin: 16px 0 6px; font-weight: 500; }
+  .navlabel:first-child { margin-top: 0; }
+  .tabs [role=tab] { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; margin: 0;
+                     border: 0; border-radius: 10px; background: none; color: var(--muted); font-weight: 550; font-size: 14.5px; text-align: left; }
+  .tabs [role=tab] .ico { width: 18px; height: 18px; flex: none; }
+  .tabs [role=tab]:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); transform: none; }
+  .tabs [role=tab][aria-selected=true] { color: var(--ink); background: color-mix(in srgb, var(--accent) 13%, transparent); }
+  .tabs [role=tab][aria-selected=true] .ico { color: var(--accent); }
+  .tabs [role=tab]::after { left: 0; right: auto; top: 10px; bottom: 10px; width: 3px; height: auto; transform: none; }
+  .tabs [role=tab][aria-selected=true]::after { transform: none; }
+  .tabs .tcount { margin-left: auto; }
+
+  .sidefoot { margin-top: auto; display: grid; gap: 12px; padding: 16px 10px 0; border-top: 1px solid var(--line); }
+  .sidefoot-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .sidefoot .live { margin-left: 0; }
+  .envtag { font-size: 12px; color: var(--muted); }
+  button.ghost { background: transparent; }
+
+  .wrap { max-width: 1240px; width: 100%; margin: 0 auto; padding: 40px 44px 96px; }
+
+  .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin: 4px 0 30px; }
+  .page-title { margin: 0; font-size: 30px; line-height: 1.15; font-weight: 750; letter-spacing: -0.03em; }
+  .page-sub { margin: 8px 0 0; color: var(--muted); font-size: 15px; max-width: 660px; }
+  .page-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .page-actions button, .toolbar button { display: inline-flex; align-items: center; gap: 8px; }
+  .bico { width: 16px; height: 16px; flex: none; }
+
+  /* Stat cards: label and icon on one line, then the figure, then what it means. */
+  .card h2 { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+             font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--ink); font-weight: 600; margin-bottom: 18px; }
+  .cico { width: 18px; height: 18px; color: var(--muted); flex: none; }
+  .nlabel { font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--ink); font-weight: 600; margin-bottom: 8px; }
+  .nbig { font-size: 28px; }
+  .card .big { font-size: 28px; }
+  .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cards.stats .card { padding-bottom: 20px; }
+
+  /* Sections read as titled cards, not boxes with a rule under the heading. */
+  section > h2 { border-bottom: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; padding: 22px var(--pad) 6px; }
+  section > h2 .link { font-size: 13px; }
+  .toolbar { border-bottom: 0; padding: 14px var(--pad) 16px; }
+  .walletline { border-bottom: 0; }
+
+  .searchbox { position: relative; flex: 1 1 320px; min-width: 220px; display: flex; }
+  .searchbox .sico { position: absolute; left: 12px; top: 50%; translate: 0 -50%; width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
+  .searchbox input { width: 100%; padding-left: 36px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { padding: 7px 13px; border-radius: 9px; border: 1px dashed var(--line-strong); background: transparent; font-weight: 550; color: var(--muted); }
+  .chip[aria-pressed=true] { border-style: solid; border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+                             background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--ink); }
+
+  /* The table sits in its own frame inside the card. */
+  #grid { margin: 0 var(--pad) var(--pad); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .tool { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12.5px; color: var(--muted); }
+  #grid .ag-cell { display: flex; align-items: center; }
+  #grid .ag-cell.ag-right-aligned-cell { justify-content: flex-end; }
+  .rules { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 0; line-height: 1.3; }
+  .rule { font-size: 11.5px; padding: 2px 7px; border-radius: 6px; white-space: nowrap;
+          background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+  .rules .muted { color: var(--muted); font-size: 12.5px; align-self: center; }
+
+  @media (max-width: 1100px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: minmax(0, 1fr); }
+    .sidebar, .tabs { min-width: 0; }
+    .sidebar { position: sticky; top: 0; height: auto; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 10px 16px;
+               padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .brand { padding: 0; } .brand .tagline { display: none; }
+    .tabs { flex-direction: row; order: 3; width: 100%; overflow-x: auto; scrollbar-width: none; gap: 4px; }
+    .navlabel { display: none; }
+    .tabs [role=tab] { width: auto; padding: 8px 12px; white-space: nowrap; }
+    .tabs [role=tab]::after { display: none; }
+    .sidefoot { margin: 0 0 0 auto; padding: 0; border: 0; grid-auto-flow: column; align-items: center; }
+    .envtag, #notify { display: none; }
+    .wrap { padding: 28px 20px 80px; }
+  }
+  @media (max-width: 560px) { .cards { grid-template-columns: 1fr; } .page-title { font-size: 25px; } }
+
   @media (max-width: 760px) {
     :root { --gap: 14px; --pad: 16px; --section-gap: 20px; }
     .wrap { padding: 24px 16px 72px; }
-    .tabs { margin: 0 -16px 24px; padding: 0 16px; }
     .flow { grid-template-columns: 1fr; }
     .track { height: 32px; margin: 4px 0; }
     .howto { gap: 14px; }
@@ -505,8 +602,9 @@
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-<div class="wrap">
-  <header>
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand">
     <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
       <path d="M1.5 16h29" stroke="url(#markg)" stroke-width="2.6" stroke-linecap="round"/>
       <path d="M3.2 16a12.8 12.8 0 0 0 25.6 0Z" fill="url(#markg)" opacity=".28"/>
@@ -516,25 +614,39 @@
     </svg>
     <div class="wordmark">
       <h1>Spendward</h1>
-      <span class="tagline">authorization firewall between AI agents and PayPal</span>
+      <span class="tagline">Agent spend control</span>
     </div>
-    <span class="live" id="live"><i></i><span id="live-text">connecting</span></span>
-    <button id="notify" class="revoke" hidden>Notify me</button>
-    <button id="theme" class="iconbtn" aria-label="Switch between light and dark" title="Light or dark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
-    </button>
-  </header>
-
-  <div id="tabs-sentinel" aria-hidden="true" style="height:1px;margin-bottom:-1px"></div>
-  <nav class="tabs" role="tablist" aria-label="Sections">
-    <button role="tab" id="t-overview" aria-controls="p-overview" aria-selected="true">Overview<span class="tcount" id="tc-overview"></span></button>
-    <button role="tab" id="t-try" aria-controls="p-try" aria-selected="false" tabindex="-1">Try it</button>
-    <button role="tab" id="t-mandates" aria-controls="p-mandates" aria-selected="false" tabindex="-1">Mandates</button>
-    <button role="tab" id="t-activity" aria-controls="p-activity" aria-selected="false" tabindex="-1">Activity<span class="tcount quiet" id="tc-activity"></span></button>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Sections" aria-orientation="vertical">
+    <div class="navlabel" role="presentation">Monitor</div>
+    <button role="tab" id="t-overview" aria-controls="p-overview" aria-selected="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg><span>Overview</span><span class="tcount" id="tc-overview"></span></button>
+    <button role="tab" id="t-activity" aria-controls="p-activity" aria-selected="false" tabindex="-1"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Activity</span><span class="tcount quiet" id="tc-activity"></span></button>
+    <div class="navlabel" role="presentation">Control</div>
+    <button role="tab" id="t-mandates" aria-controls="p-mandates" aria-selected="false" tabindex="-1"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg><span>Mandates</span></button>
+    <button role="tab" id="t-try" aria-controls="p-try" aria-selected="false" tabindex="-1"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4z"/></svg><span>Try it</span></button>
   </nav>
+  <div class="sidefoot">
+    <div class="sidefoot-row">
+      <span class="live" id="live"><i></i><span id="live-text">connecting</span></span>
+      <button id="theme" class="iconbtn" aria-label="Switch between light and dark" title="Light or dark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+      </button>
+    </div>
+    <button id="notify" class="ghost" hidden>Notify me about approvals</button>
+    <span class="envtag">PayPal sandbox</span>
+  </div>
+</aside>
+
+<main class="wrap">
+  <div class="sr" role="status" aria-live="polite" id="announce"></div>
 
   <div class="panel" id="p-overview" role="tabpanel" aria-labelledby="t-overview">
-  <!-- The pipeline: what the agent asked, what Spendward passed, what reached PayPal. -->
+    <div class="page-head">
+      <div><h2 class="page-title">Overview</h2>
+        <p class="page-sub">Every payment your agent attempts, what Spendward decided, and what reached PayPal.</p></div>
+      <div class="page-actions"><button class="primary" data-goto="try"><svg class="bico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 4 14 8-14 8z"/></svg>Run a scenario</button></div>
+    </div>
+
   <div class="flow" id="flow">
     <div class="packets" id="packets" aria-hidden="true"></div>
     <div class="node" id="n-agent">
@@ -556,32 +668,98 @@
     </div>
   </div>
 
-  <div class="cards" id="cards">
-    <div class="card" id="c-mandate"><h2>Mandate</h2><div id="mandate-body"></div></div>
-    <div class="card"><h2>Spent</h2>
-      <div class="big num" id="v-spent">USD 0.00</div>
-      <div class="sub" id="s-spent"></div>
-      <div class="meter" id="meter" role="img" aria-label="share of the mandate used"><i></i></div>
+    <div class="cards" id="cards">
+      <div class="card" id="c-mandate"><h2><span>Mandate</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></h2><div id="mandate-body"></div></div>
+      <div class="card"><h2><span>Spent</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></h2>
+        <div class="big num" id="v-spent">USD 0.00</div>
+        <div class="sub" id="s-spent"></div>
+        <div class="meter" id="meter" role="img" aria-label="share of the mandate used"><i></i></div>
+      </div>
+      <div class="card"><h2><span>Refused</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></h2><div class="big" id="v-refused">0</div><div class="sub" id="s-refused"></div></div>
+      <div class="card" id="c-chain"><h2><span>Audit chain</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></h2><div class="big" id="v-chain">intact</div><div class="sub" id="s-chain"></div></div>
     </div>
-    <div class="card"><h2>Refused</h2><div class="big" id="v-refused">0</div><div class="sub" id="s-refused"></div></div>
-    <div class="card" id="c-chain"><h2>Audit chain</h2><div class="big" id="v-chain">intact</div><div class="sub" id="s-chain"></div></div>
+
+    <section aria-labelledby="pending-h" id="pending-section">
+      <h2 id="pending-h">Needs you</h2>
+      <div class="pending" id="pending"></div>
+    </section>
+
+    <section aria-labelledby="recent-h">
+      <h2 id="recent-h">Latest decisions <button class="link" data-goto="activity">View all activity</button></h2>
+      <div class="pending" id="recent"></div>
+    </section>
   </div>
-  <div class="sr" role="status" aria-live="polite" id="announce"></div>
 
-  <section aria-labelledby="pending-h" id="pending-section">
-    <h2 id="pending-h">Needs you</h2>
-    <div class="pending" id="pending"></div>
-  </section>
+  <div class="panel" id="p-activity" role="tabpanel" aria-labelledby="t-activity" hidden>
+    <div class="page-head">
+      <div><h2 class="page-title">Activity</h2>
+        <p class="page-sub">Every decision Spendward made, in a tamper-evident chain, with PayPal's own confirmations alongside.</p></div>
+      <div class="page-actions"><button id="export"><svg class="bico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Export CSV</button></div>
+    </div>
 
-  <section aria-labelledby="recent-h">
-    <h2 id="recent-h">Latest decisions <button class="link" data-goto="activity">See all</button></h2>
-    <div class="pending" id="recent"></div>
-  </section>
+    <div class="cards stats">
+      <div class="card"><h2><span>Total decisions</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></h2><div class="big num" id="a-total">0</div><div class="sub">all time</div></div>
+      <div class="card"><h2><span>Allowed</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></h2><div class="big num" id="a-allowed">0</div><div class="sub" id="a-allowed-s">within the mandate or approved</div></div>
+      <div class="card"><h2><span>Held for you</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></h2><div class="big num" id="a-held">0</div><div class="sub">escalated for approval</div></div>
+      <div class="card"><h2><span>Blocked</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></h2><div class="big num" id="a-blocked">0</div><div class="sub">PayPal never called</div></div>
+    </div>
+
+    <section aria-labelledby="audit-h">
+      <h2 id="audit-h">Decision log</h2>
+      <div class="toolbar">
+        <div class="searchbox"><svg class="sico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><label for="q" class="sr">Search decisions</label>
+          <input type="search" id="q" placeholder="Search by merchant, tool, rule or order id…"></div>
+        <div class="chips" role="group" aria-label="Filter by decision">
+          <button class="chip" data-filter="all" aria-pressed="true">All</button>
+          <button class="chip" data-filter="ALLOW" aria-pressed="false">Allowed</button>
+          <button class="chip" data-filter="REQUIRE_APPROVAL" aria-pressed="false">Held</button>
+          <button class="chip" data-filter="BLOCK" aria-pressed="false">Blocked</button>
+        </div>
+        <button id="refresh" class="ghost" title="Refresh"><svg class="bico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Refresh</button>
+      </div>
+      <div id="grid" role="region" aria-label="Decision history. Select a row and press Enter to investigate it."></div>
+    </section>
+
+    <section aria-labelledby="events-h">
+      <h2 id="events-h">PayPal confirmations</h2>
+      <div class="pending" id="events"></div>
+    </section>
+  </div>
+
+  <div class="panel" id="p-mandates" role="tabpanel" aria-labelledby="t-mandates" hidden>
+    <div class="page-head">
+      <div><h2 class="page-title">Mandates</h2>
+        <p class="page-sub">What your agent may spend, signed with your key. The active mandate governs its very next request.</p></div>
+      <div class="page-actions"><button class="primary" id="new-mandate"><svg class="bico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New mandate</button></div>
+    </div>
+
+    <div class="cards stats">
+      <div class="card"><h2><span>Active mandate</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></h2><div class="big num" id="m-limit">—</div><div class="sub" id="m-limit-s"></div></div>
+      <div class="card"><h2><span>Budget left</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></h2><div class="big num" id="m-left">—</div><div class="sub" id="m-left-s"></div></div>
+      <div class="card"><h2><span>Saved wallet</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg></h2><div class="big" id="m-wallet">—</div><div class="sub" id="m-wallet-s"></div></div>
+      <div class="card"><h2><span>Signed mandates</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></h2><div class="big num" id="m-count">0</div><div class="sub" id="m-count-s"></div></div>
+    </div>
+
+    <section aria-labelledby="wallet-h">
+      <h2 id="wallet-h">PayPal wallet</h2>
+      <div class="walletline" id="wallet"></div>
+    </section>
+
+    <section aria-labelledby="mandates-h" id="mandates-section">
+      <h2 id="mandates-h">Signed mandates</h2>
+      <div class="pending" id="mandates" style="padding-top:4px"></div>
+    </section>
   </div>
 
   <div class="panel" id="p-try" role="tabpanel" aria-labelledby="t-try" hidden>
+    <div class="page-head">
+      <div><h2 class="page-title">Try it</h2>
+        <p class="page-sub">Give a real AI agent a task and watch Spendward decide, step by step.</p></div>
+      <div class="page-actions"><button id="reset-demo" class="danger"><svg class="bico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Reset demo</button></div>
+    </div>
+
     <section aria-labelledby="try-h">
-      <h2 id="try-h">Try it: give the agent a task and watch Spendward decide</h2>
+      <h2 id="try-h">Scenarios</h2>
       <div class="howto">
         <div><b>1</b><span>Pick a scenario, or write your own task.</span></div>
         <div><b>2</b><span>A real AI agent shops and calls PayPal's tools. Spendward checks each call against your signed mandate.</span></div>
@@ -589,8 +767,6 @@
       </div>
       <div class="toolbar" id="try-bar">
         <span class="hint" style="margin:0" id="try-catalog">Loading…</span>
-        <span style="flex:1"></span>
-        <button id="reset-demo" class="danger">Reset demo</button>
       </div>
       <div class="scenarios" id="scenarios"></div>
       <form class="ask" id="ask" autocomplete="off">
@@ -607,34 +783,7 @@
       </div>
     </section>
   </div>
-
-  <div class="panel" id="p-mandates" role="tabpanel" aria-labelledby="t-mandates" hidden>
-  <section aria-labelledby="mandates-h" id="mandates-section">
-    <h2 id="mandates-h">Mandates and wallet</h2>
-    <div class="walletline" id="wallet"></div>
-    <div class="toolbar" style="justify-content:space-between">
-      <span class="hint" style="margin:0">The active mandate governs the agent's next request. Switching takes effect at once.</span>
-      <button class="primary" id="new-mandate">New mandate</button>
-    </div>
-    <div class="pending" id="mandates" style="padding-top:4px;padding-bottom:4px"></div>
-  </section>
-  </div>
-
-  <div class="panel" id="p-activity" role="tabpanel" aria-labelledby="t-activity" hidden>
-  <section aria-labelledby="audit-h">
-    <h2 id="audit-h">Audit trail</h2>
-    <div class="toolbar">
-      <label for="q">Filter decisions</label>
-      <input type="search" id="q" placeholder="Filter by tool, merchant, outcome or rule…">
-      <button id="refresh">Refresh</button>
-    </div>
-    <div id="grid" role="region" aria-label="Decision history. Select a row and press Enter to investigate it."></div>
-  </section>
-  <section aria-labelledby="events-h">
-    <h2 id="events-h">What PayPal says happened</h2>
-    <div class="pending" id="events"></div>
-  </section>
-  </div>
+</main>
 </div>
 
 <dialog id="confirm-revoke" aria-labelledby="revoke-h">
@@ -696,6 +845,11 @@
 const tick = () => `<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const money = (a, c) => a == null ? "—" : `${c ?? "USD"} ${Number(a).toFixed(2)}`;
 const when  = t => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+/** Date and time, sortable at a glance: 2026-11-07 17:43:04. */
+const stamp = t => { const d = new Date(t), z = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; };
+const ACTION = { create_order: "Create order", pay_order: "Pay order", get_order: "Get order", search_products: "Search",
+                 create_refund: "Refund", cancel_subscription: "Cancel subscription" };
 const esc   = s => String(s ?? "").replace(/[&<>"]/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
 
 const badge = o => o === "ALLOW" ? `<span class="badge allow">allowed</span>`
@@ -705,25 +859,37 @@ const badge = o => o === "ALLOW" ? `<span class="badge allow">allowed</span>`
 let grid, state = { audit: [], approvals: [], mandate: null, chain: { valid: true } };
 
 const columns = [
-  { headerName: "Time", field: "at", width: 128, valueFormatter: p => when(p.value) },
-  { headerName: "Agent", field: "agent", width: 125 },
-  { headerName: "Tool", field: "tool", width: 150 },
-  { headerName: "Amount", field: "amount", width: 118, type: "rightAligned",
+  { headerName: "Time", field: "at", width: 178, sort: "desc", valueFormatter: p => stamp(p.value), cellClass: "num" },
+  // Kept for the detail panel and the CSV; one agent per mandate makes it noise on screen.
+  { headerName: "Agent", field: "agent", width: 116, hide: true },
+  { headerName: "Action", field: "tool", width: 136, valueFormatter: p => ACTION[p.value] ?? p.value },
+  { headerName: "Merchant", field: "merchant", width: 122, valueFormatter: p => p.value ?? "—" },
+  { headerName: "Amount", field: "amount", width: 124, type: "rightAligned",
     cellStyle: { fontVariantNumeric: "tabular-nums" },
     valueFormatter: p => p.value == null ? "—" : money(p.value, p.data.currency) },
-  { headerName: "Merchant", field: "merchant", width: 135, valueFormatter: p => p.value ?? "—" },
-  { headerName: "Decision", field: "outcome", width: 125,
+  { headerName: "Decision", field: "outcome", width: 112,
     cellRenderer: p => badge(p.value), cellStyle: { display: "flex", alignItems: "center" } },
-  { headerName: "Rules triggered", flex: 1, minWidth: 240,
+  { headerName: "Paid to", field: "payeeAccount", width: 140, cellClass: "tool", valueFormatter: p => p.value ?? "—" },
+  // Long rule lists wrap onto a second line rather than run off the table.
+  { headerName: "Rules triggered", flex: 1, minWidth: 220, autoHeight: true,
+    cellRenderer: p => {
+      if (p.data.error) return `<span class="rules"><span>allowed by Spendward, rejected by PayPal</span></span>`;
+      const rules = p.data.violations.map(v => `<code class="rule">${esc(v.rule)}</code>`).join("");
+      if (!rules) return `<span class="rules"><span class="muted">—</span></span>`;
+      return `<span class="rules">${rules}${p.data.outcome === "ALLOW" ? `<span class="muted">approved by you</span>` : ""}</span>`;
+    },
     // An allowed row carrying violations is one the principal approved. Showing
     // the bare rule name there reads as a contradiction.
     valueGetter: p => {
       const rules = p.data.violations.map(v => v.rule).join(", ");
       if (p.data.error) return "allowed by Spendward, rejected by PayPal";
       if (!rules) return "—";
-      return p.data.outcome === "ALLOW" ? `${rules} — approved by you` : rules;
+      return p.data.outcome === "ALLOW" ? `${rules} · approved by you` : rules;
     } },
 ];
+
+/** Decision filter for the Activity log; "all" shows everything. */
+let decisionFilter = "all";
 
 // ---------------------------------------------------------------------------
 // Motion. Every animation reports something that happened: a decision moving
@@ -735,6 +901,8 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)");
 // up; while hidden, everything lands instantly, as with reduced motion.
 const still = () => reduce.matches || document.hidden;
 gsap.defaults({ ease: "power3.out", duration: 0.5 });
+// The opening animates whichever page is showing; the others simply have nothing to match.
+gsap.config({ nullTargetWarn: false });
 const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const $ = id => document.getElementById(id);
 
@@ -1077,6 +1245,8 @@ grid = agGrid.createGrid($("grid"), {
     REQUIRE_APPROVAL: { background: "var(--approve-bg)" },
   })[p.data.outcome],
   onRowClicked: e => openDetail(e.data),
+  isExternalFilterPresent: () => decisionFilter !== "all",
+  doesExternalFilterPass: n => n.data.outcome === decisionFilter,
   // Without this the investigation panel is mouse-only.
   onCellKeyDown: e => { if (e.event?.key === "Enter" || e.event?.key === " ") openDetail(e.data); },
   overlayNoRowsTemplate: "No decisions recorded yet. Run an agent to populate this.",
@@ -1084,6 +1254,18 @@ grid = agGrid.createGrid($("grid"), {
 
 $("q").addEventListener("input", e => grid.setGridOption("quickFilterText", e.target.value));
 $("refresh").addEventListener("click", load);
+document.querySelector(".chips").addEventListener("click", e => {
+  const chip = e.target.closest(".chip");
+  if (!chip) return;
+  decisionFilter = chip.dataset.filter;
+  document.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", String(c === chip)));
+  grid.onFilterChanged();
+});
+$("export").addEventListener("click", () => {
+  const d = new Date(), z = n => String(n).padStart(2, "0");
+  grid.exportDataAsCsv({ allColumns: true, fileName: `spendward-decisions-${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}.csv`,
+    processCellCallback: p => p.column.getColId() === "at" ? stamp(p.value) : p.value });
+});
 $("detail-close").addEventListener("click", () => $("detail").close());
 
 // Revoking is final, so it asks first, in the page rather than a browser prompt.
@@ -1122,6 +1304,18 @@ const SINCE = { month: "this month: ", week: "this week: ", day: "today: ", none
 
 function paintMandates() {
   const w = state.wallet;
+  const m = state.mandate;
+  $("m-limit").textContent = m ? money(m.maxTransactionAmount, m.currency) : "—";
+  $("m-limit-s").textContent = m ? `per payment · ${m.allowedMerchants.join(", ")}` : "none active";
+  const left = m ? Math.max(0, m.maxTotalAmount - (state.spent ?? 0)) : null;
+  $("m-left").textContent = m ? money(left, m.currency) : "—";
+  $("m-left-s").textContent = m ? `of ${money(m.maxTotalAmount, m.currency)} ${PER[m.budgetPeriod] ?? "in total"}` : "";
+  $("m-wallet").textContent = w ? "Connected" : "Not connected";
+  $("m-wallet").style.color = w ? "var(--allow)" : "var(--muted)";
+  $("m-wallet-s").textContent = w ? (w.email ?? "PayPal Vault") : "orders wait for checkout";
+  const all = state.mandates ?? [];
+  $("m-count").textContent = String(all.length);
+  $("m-count-s").textContent = `${all.filter(x => x.revokedAt).length} revoked`;
   const wb = $("wallet"), wk = JSON.stringify(w);
   if (wb._k !== wk) {
     wb._k = wk;
@@ -1147,7 +1341,7 @@ function paintMandates() {
     </div>`);
 }
 
-$("mandates-section").addEventListener("click", async e => {
+$("p-mandates").addEventListener("click", async e => {
   const t = e.target;
   if (t.id === "wallet-on") {
     t.disabled = true;
@@ -1255,7 +1449,7 @@ function notifyWaiting() {
 // ---------------------------------------------------------------------------
 // Tabs. The hash names the tab, so a link can open straight to "Try it".
 // ---------------------------------------------------------------------------
-const TABS = ["overview", "try", "mandates", "activity"];
+const TABS = ["overview", "activity", "mandates", "try"];
 function showTab(name, focus = false, animate = true) {
   if (!TABS.includes(name)) name = "overview";
   for (const n of TABS) {
@@ -1277,7 +1471,8 @@ document.querySelector(".tabs").addEventListener("click", e => {
 document.querySelector(".tabs").addEventListener("keydown", e => {
   const i = TABS.indexOf(document.activeElement?.id?.slice(2));
   if (i < 0) return;
-  const next = e.key === "ArrowRight" ? (i + 1) % TABS.length : e.key === "ArrowLeft" ? (i + TABS.length - 1) % TABS.length
+  const fwd = e.key === "ArrowRight" || e.key === "ArrowDown", back = e.key === "ArrowLeft" || e.key === "ArrowUp";
+  const next = fwd ? (i + 1) % TABS.length : back ? (i + TABS.length - 1) % TABS.length
     : e.key === "Home" ? 0 : e.key === "End" ? TABS.length - 1 : null;
   if (next !== null) { e.preventDefault(); showTab(TABS[next], true); }
 });
@@ -1292,6 +1487,16 @@ function paintChrome() {
   const waiting = (state.approvals ?? []).filter(x => x.status === "PENDING").length + (state.toCollect ?? []).length;
   $("tc-overview").textContent = waiting || "";
   $("tc-activity").textContent = (state.audit ?? []).length || "";
+
+  // Activity stats. Payments are the pay_order rows; decisions are everything else.
+  const a = state.audit ?? [];
+  const decisions = a.filter(e => e.tool !== "pay_order");
+  const paid = a.filter(e => e.tool === "pay_order" && e.outcome === "ALLOW" && !e.error).length;
+  count($("a-total"), decisions.length);
+  count($("a-allowed"), decisions.filter(e => e.outcome === "ALLOW").length);
+  count($("a-held"), decisions.filter(e => e.outcome === "REQUIRE_APPROVAL").length);
+  count($("a-blocked"), decisions.filter(e => e.outcome === "BLOCK").length);
+  $("a-allowed-s").textContent = paid ? `${paid} paid at PayPal` : "within the mandate or approved";
   const latest = [...(state.audit ?? [])].reverse().slice(0, 5);
   const box = $("recent");
   let empty = box.querySelector(".empty");
@@ -1426,7 +1631,7 @@ $("reset-go").addEventListener("click", async e => {
 // The opening, once per page load: the mark draws itself, then the page settles in.
 function intro() {
   if (still()) return;
-  const mark = document.querySelector("header .mark");
+  const mark = document.querySelector(".brand .mark");
   const [line, fill, ring] = mark.children;
   const len = el => el.getTotalLength();
   gsap.set(line, { strokeDasharray: len(line), strokeDashoffset: len(line) });
@@ -1435,9 +1640,10 @@ function intro() {
     .to(line, { strokeDashoffset: 0, duration: 0.5, ease: "power2.out" })
     .to(ring, { strokeDashoffset: 0, duration: 0.7, ease: "power2.inOut" }, "-=0.2")
     .from(fill, { autoAlpha: 0, duration: 0.4 }, "-=0.2")
-    .from(".wordmark > *", { autoAlpha: 0, x: -8, stagger: 0.08, duration: 0.4 }, 0.25)
-    .from(".flow .node, .flow .track", { autoAlpha: 0, y: 12, stagger: 0.06, duration: 0.45 }, 0.35)
-    .from(".cards .card", { autoAlpha: 0, y: 12, stagger: 0.06, duration: 0.45 }, 0.55)
+    .from(".brand .wordmark > *", { autoAlpha: 0, x: -8, stagger: 0.08, duration: 0.4 }, 0.25)
+    .from(".panel:not([hidden]) .flow .node, .panel:not([hidden]) .flow .track", { autoAlpha: 0, y: 12, stagger: 0.06, duration: 0.45 }, 0.35)
+    .from(".panel:not([hidden]) .page-head", { autoAlpha: 0, y: 10, duration: 0.45 }, 0.3)
+    .from(".panel:not([hidden]) .cards .card", { autoAlpha: 0, y: 12, stagger: 0.06, duration: 0.45 }, 0.55)
     .from(".tabs [role=tab]", { autoAlpha: 0, y: 6, stagger: 0.05, duration: 0.35 }, 0.3)
     .from(".panel:not([hidden]) > section", { autoAlpha: 0, y: 12, stagger: 0.08, duration: 0.45 }, 0.75)
     .set([line, ring], { clearProps: "strokeDasharray,strokeDashoffset" });
@@ -1445,8 +1651,6 @@ function intro() {
 }
 
 syncTheme();
-new IntersectionObserver(([e]) => document.querySelector(".tabs").classList.toggle("stuck", !e.isIntersecting))
-  .observe($("tabs-sentinel"));
 // No tab animation on first paint: the opening sequence animates the panel,
 // and two from() tweens on one element would leave it invisible.
 showTab(location.hash.slice(1) || "overview", false, false);
