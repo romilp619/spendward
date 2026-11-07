@@ -2,7 +2,9 @@
  * Spendward dashboard and approval surface.
  * Run with: npm run web
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { streamSSE } from "hono/streaming";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Hono } from "hono";
@@ -21,6 +23,7 @@ import { directory, resolvePayee } from "../lib/merchants.js";
 import { placeOrder, recordPayment } from "../lib/checkout.js";
 import { wallet, saveWallet, forgetWallet } from "../lib/wallet.js";
 import { draftMandate, DraftSchema } from "../lib/drafter.js";
+import { FIXED, LIVE } from "../demo/tasks.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -71,7 +74,7 @@ app.get("/api/state", (c) => {
     chain: verifyChain(),
     events: recentEvents(),
     wallet: w ? { email: w.email, connectedAt: w.connectedAt, vaultId: `${w.vaultId.slice(0, 4)}…` } : null,
-    mandates: allMandates().map((s) => ({
+    mandates: allMandates().sort((x, y) => Number(y.mandate.id === m?.id) - Number(x.mandate.id === m?.id)).map((s) => ({
       id: s.mandate.id, issuedAt: s.mandate.issuedAt, expiresAt: s.mandate.expiresAt,
       maxTransactionAmount: s.mandate.maxTransactionAmount, maxTotalAmount: s.mandate.maxTotalAmount,
       budgetPeriod: s.mandate.budgetPeriod, allowedMerchants: s.mandate.allowedMerchants,
@@ -252,6 +255,86 @@ app.post("/api/mandates/:id/activate", (c) => {
   if (revokedAt(id)) return c.json({ error: "That mandate is revoked; sign a new one instead." }, 409);
   activate(id);
   return c.json({ id });
+});
+
+// --- Try it ---------------------------------------------------------------------
+// Lets anyone evaluating Spendward run the real agent from the browser and
+// watch it, instead of reading about it. The agent is the same unhardened
+// process `npm run agent` starts, talking to the same MCP server.
+
+/** Live catalogue when the active mandate names a real retailer and Channel3 is configured. */
+function catalogFor(): "live" | "fixed" {
+  const m = active()?.mandate;
+  return process.env.CHANNEL3_API_KEY && m?.allowedMerchants.some((x) => x.includes(".")) ? "live" : "fixed";
+}
+
+app.get("/api/scenarios", (c) => {
+  const catalog = catalogFor();
+  return c.json({
+    catalog,
+    scenarios: catalog === "live" ? LIVE : FIXED,
+    presets: { fixed: Boolean(byId("mnd_demo_001")), live: Boolean(byId("mnd_live_001")) && Boolean(process.env.CHANNEL3_API_KEY) },
+    model: process.env.LLM_MODEL ?? null,
+    busy: running,
+  });
+});
+
+let running = false;
+
+app.get("/api/agent/run", (c) => {
+  const task = (c.req.query("task") ?? "").trim().slice(0, 500);
+  const unattended = c.req.query("unattended") !== "0";
+  return streamSSE(c, async (stream) => {
+    const send = (e: Record<string, unknown>) => stream.writeSSE({ data: JSON.stringify(e) });
+    if (!task) { await send({ type: "error", text: "Give the agent something to do." }); return; }
+    if (!active()) { await send({ type: "error", text: "No active mandate. Sign one in the Mandates tab first." }); return; }
+    if (running) { await send({ type: "error", text: "The agent is already running a task. Wait for it to finish." }); return; }
+    running = true;
+    const catalog = catalogFor();
+    await send({ type: "start", catalog, unattended });
+    // The agent never receives the principal's signing key.
+    const env: Record<string, string> = {};
+    for (const [k, v] of Object.entries(process.env)) if (v !== undefined && k !== "MANDATE_PRIVATE_KEY") env[k] = v;
+    Object.assign(env, {
+      SPENDWARD_EVENTS_JSON: "1",
+      SPENDWARD_PLANTED: "1",
+      SPENDWARD_UNATTENDED: unattended ? "1" : "0",
+      SPENDWARD_CATALOG: catalog === "live" ? "channel3" : "",
+    });
+    // No shell: the task is passed as one argument, never interpreted.
+    const child = spawn(process.execPath, ["--import", "tsx", "src/agent/shopper.ts", task], { env, cwd: process.cwd() });
+    const timer = setTimeout(() => child.kill("SIGKILL"), 180_000);
+    let buf = "";
+    let failed = "";
+    child.stdout.on("data", (d: Buffer) => {
+      buf += d.toString();
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, i).trim();
+        buf = buf.slice(i + 1);
+        if (line.startsWith("{")) void stream.writeSSE({ data: line });
+      }
+    });
+    child.stderr.on("data", (d: Buffer) => { failed += d.toString(); });
+    stream.onAbort(() => { child.kill("SIGKILL"); });
+    await new Promise<void>((resolve) => child.on("close", () => resolve()));
+    clearTimeout(timer);
+    running = false;
+    const err = failed.match(/Error: ([^\n]+)/)?.[1];
+    await send(err ? { type: "error", text: err.slice(0, 300) } : { type: "end" });
+  });
+});
+
+/** Clears the demo record. Signed mandates and the saved wallet are kept. */
+app.post("/api/demo/reset", (c) => {
+  if (running) return c.json({ error: "Wait for the agent to finish first." }, 409);
+  for (const f of [
+    process.env.SPENDWARD_AUDIT_LOG ?? "audit.jsonl",
+    process.env.SPENDWARD_APPROVALS ?? "approvals.json",
+    process.env.SPENDWARD_EVENTS ?? "paypal-events.jsonl",
+    process.env.SPENDWARD_REVOCATIONS ?? "revoked.json",
+  ]) rmSync(f, { force: true });
+  return c.json({ ok: true });
 });
 
 // --- Saved wallet (PayPal Vault) -------------------------------------------------

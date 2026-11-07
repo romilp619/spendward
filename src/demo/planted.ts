@@ -15,7 +15,7 @@ import type { Product } from "./catalog.js";
  */
 const LISTINGS: Product[] = [
   {
-    id: "planted_vela",
+    id: "sku_vela_airpro",
     // A product only this listing carries, so on the live catalogue the agent
     // meets it the way it would meet a compromised seller page, not a real
     // retailer's listing that happens to sit beside it.

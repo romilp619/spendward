@@ -43,8 +43,7 @@
   /* Money must align column to column, or scanning a ledger is guesswork. */
   .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
 
-  header { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; padding-bottom: 18px;
-           border-bottom: 1px solid var(--line); }
+  header { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; padding-bottom: 14px; }
   .mark { width: 30px; height: 30px; color: var(--accent); flex: none; }
   .wordmark { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   h1 { font-size: 21px; margin: 0; letter-spacing: -0.025em; font-weight: 680; }
@@ -154,6 +153,50 @@
 
   #grid { height: 420px; }
 
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 22px; overflow-x: auto; scrollbar-width: none; }
+  .tabs [role=tab] { border: 0; background: none; border-radius: 0; padding: 10px 14px; font-weight: 600; color: var(--muted);
+                     border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: inline-flex; gap: 7px; align-items: center; }
+  .tabs [role=tab]:hover { color: var(--ink); filter: none; }
+  .tabs [role=tab][aria-selected=true] { color: var(--ink); border-bottom-color: var(--accent); }
+  .tcount { font-size: 11.5px; font-weight: 700; min-width: 18px; padding: 1px 6px; border-radius: 999px; background: var(--approve); color: #fff; }
+  .tcount:empty { display: none; }
+  .tcount.quiet { background: var(--line); color: var(--muted); }
+  .panel > :first-child { margin-top: 0; }
+  .panel .flow { margin-top: 0; }
+  button.link { border: 0; background: none; padding: 0; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; }
+  section > h2 button.link { margin-left: auto; font-size: 12.5px; }
+  section > h2 { display: flex; align-items: center; gap: 8px; }
+
+  /* Try it */
+  .howto { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px; border-bottom: 1px solid var(--line); }
+  .howto div { display: flex; gap: 10px; font-size: 14px; color: var(--muted); }
+  .howto b { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+             background: var(--accent); color: #fff; font-size: 12.5px; }
+  .scenarios { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; padding: 16px; }
+  .scenario { text-align: left; display: grid; gap: 6px; align-content: start; padding: 14px; font-weight: 400;
+              border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+  .scenario:hover { border-color: var(--accent); filter: none; }
+  .scenario:disabled { opacity: .55; cursor: progress; }
+  .scenario .st { font-weight: 650; font-size: 14.5px; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .scenario .sw { color: var(--muted); font-size: 13px; line-height: 1.45; }
+  .scenario .sq { font-size: 13px; font-style: italic; }
+  .ask { display: flex; gap: 10px; align-items: center; padding: 0 16px 16px; flex-wrap: wrap; }
+  .ask .check { display: flex; gap: 6px; align-items: center; font-size: 13.5px; color: var(--muted); }
+  .transcript { padding: 16px; display: grid; gap: 10px; min-height: 120px; align-content: start; }
+  .msg { padding: 10px 13px; border-radius: 9px; font-size: 14px; line-height: 1.5; border: 1px solid var(--line); white-space: pre-wrap; word-break: break-word; }
+  .msg .who { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 650; margin-bottom: 3px; }
+  .msg.you { background: var(--bg); }
+  .msg.call { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  .msg.res-allow { border-color: var(--allow); background: var(--allow-bg); }
+  .msg.res-block { border-color: var(--block); background: var(--block-bg); }
+  .msg.res-approve { border-color: var(--approve); background: var(--approve-bg); }
+  .msg details summary { cursor: pointer; color: var(--muted); }
+  .msg.wait { color: var(--muted); font-size: 13px; }
+  .typing { display: inline-flex; gap: 4px; } .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  @media (max-width: 760px) { .howto { grid-template-columns: 1fr; } }
+  @media (max-width: 480px) { .tabs [role=tab] { padding: 10px 9px; font-size: 14px; } .tabs { gap: 0; } }
+
   /* Mandates and wallet */
   .mrow { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
           padding: 12px 0; border-bottom: 1px solid var(--line); }
@@ -220,6 +263,14 @@
     <button id="notify" class="revoke" hidden>Notify me</button>
   </header>
 
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="t-overview" aria-controls="p-overview" aria-selected="true">Overview<span class="tcount" id="tc-overview"></span></button>
+    <button role="tab" id="t-try" aria-controls="p-try" aria-selected="false" tabindex="-1">Try it</button>
+    <button role="tab" id="t-mandates" aria-controls="p-mandates" aria-selected="false" tabindex="-1">Mandates</button>
+    <button role="tab" id="t-activity" aria-controls="p-activity" aria-selected="false" tabindex="-1">Activity<span class="tcount quiet" id="tc-activity"></span></button>
+  </nav>
+
+  <div class="panel" id="p-overview" role="tabpanel" aria-labelledby="t-overview">
   <!-- The pipeline: what the agent asked, what Spendward passed, what reached PayPal. -->
   <div class="flow" id="flow">
     <div class="packets" id="packets" aria-hidden="true"></div>
@@ -254,6 +305,47 @@
   </div>
   <div class="sr" role="status" aria-live="polite" id="announce"></div>
 
+  <section aria-labelledby="pending-h" id="pending-section">
+    <h2 id="pending-h">Needs you</h2>
+    <div class="pending" id="pending"></div>
+  </section>
+
+  <section aria-labelledby="recent-h">
+    <h2 id="recent-h">Latest decisions <button class="link" data-goto="activity">See all</button></h2>
+    <div class="pending" id="recent"></div>
+  </section>
+  </div>
+
+  <div class="panel" id="p-try" role="tabpanel" aria-labelledby="t-try" hidden>
+    <section aria-labelledby="try-h">
+      <h2 id="try-h">Try it: give the agent a task and watch Spendward decide</h2>
+      <div class="howto">
+        <div><b>1</b><span>Pick a scenario, or write your own task.</span></div>
+        <div><b>2</b><span>A real AI agent shops and calls PayPal's tools. Spendward checks each call against your signed mandate.</span></div>
+        <div><b>3</b><span>Anything waiting for you appears in <button class="link" data-goto="overview">Overview</button>. Every decision is in <button class="link" data-goto="activity">Activity</button>.</span></div>
+      </div>
+      <div class="toolbar" id="try-bar">
+        <span class="hint" style="margin:0" id="try-catalog">Loading…</span>
+        <span style="flex:1"></span>
+        <button id="reset-demo" class="danger">Reset demo</button>
+      </div>
+      <div class="scenarios" id="scenarios"></div>
+      <form class="ask" id="ask" autocomplete="off">
+        <label for="ask-text" class="sr">Your own task for the agent</label>
+        <input id="ask-text" type="search" placeholder="Or type your own task, for example: buy me a USB-C charger from Best Buy">
+        <label class="check" title="An unattended agent cannot stop to ask you, like a scheduled or background agent."><input type="checkbox" id="unattended" checked> Unattended</label>
+        <button class="primary" id="ask-go">Run</button>
+      </form>
+    </section>
+    <section aria-labelledby="run-h">
+      <h2 id="run-h">Agent transcript <span class="tcount quiet" id="run-state"></span></h2>
+      <div class="transcript" id="transcript" aria-live="polite">
+        <p class="empty">Nothing has run yet. Pick a scenario above.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="panel" id="p-mandates" role="tabpanel" aria-labelledby="t-mandates" hidden>
   <section aria-labelledby="mandates-h" id="mandates-section">
     <h2 id="mandates-h">Mandates and wallet</h2>
     <div class="walletline" id="wallet"></div>
@@ -263,17 +355,9 @@
     </div>
     <div class="pending" id="mandates" style="padding-top:4px;padding-bottom:4px"></div>
   </section>
+  </div>
 
-  <section aria-labelledby="pending-h" id="pending-section">
-    <h2 id="pending-h">Needs you</h2>
-    <div class="pending" id="pending"></div>
-  </section>
-
-  <section aria-labelledby="events-h">
-    <h2 id="events-h">What PayPal says happened</h2>
-    <div class="pending" id="events"></div>
-  </section>
-
+  <div class="panel" id="p-activity" role="tabpanel" aria-labelledby="t-activity" hidden>
   <section aria-labelledby="audit-h">
     <h2 id="audit-h">Audit trail</h2>
     <div class="toolbar">
@@ -283,6 +367,11 @@
     </div>
     <div id="grid" role="region" aria-label="Decision history. Select a row and press Enter to investigate it."></div>
   </section>
+  <section aria-labelledby="events-h">
+    <h2 id="events-h">What PayPal says happened</h2>
+    <div class="pending" id="events"></div>
+  </section>
+  </div>
 </div>
 
 <dialog id="confirm-revoke" aria-labelledby="revoke-h">
@@ -320,6 +409,15 @@
   </div>
   <div class="close" style="display:flex;gap:8px;justify-content:flex-end">
     <button id="m-cancel">Cancel</button><button id="m-sign" class="primary">Sign and activate</button>
+  </div>
+</dialog>
+
+<dialog id="confirm-reset" aria-labelledby="reset-h">
+  <h3 id="reset-h">Reset the demo?</h3>
+  <div class="detail">Clears the audit trail, waiting approvals, PayPal confirmations and any revocation, so you can start over.
+    Your signed mandates and saved wallet are kept. Orders already at PayPal are not touched.</div>
+  <div class="close" style="display:flex;gap:8px;justify-content:flex-end">
+    <button id="reset-cancel">Cancel</button><button id="reset-go" class="danger solid">Reset demo</button>
   </div>
 </dialog>
 
@@ -433,7 +531,9 @@ function centre(el) {
 }
 
 function packet(e) {
-  if (still()) return gsap.timeline();
+  // The pipeline is only on screen in Overview; measuring a hidden one would
+  // send packets flying from the corner.
+  if (still() || $("p-overview").hidden) return gsap.timeline();
   const agent = centre($("n-agent")), gate = centre($("n-gate")), paypal = centre($("n-paypal"));
   const tone = e.outcome === "ALLOW" ? css("--allow") : e.outcome === "BLOCK" ? css("--block") : css("--approve");
   const dot = document.createElement("i");
@@ -623,6 +723,7 @@ async function load() {
     $("live").classList.remove("down");
     paint();
     paintMandates();
+    paintChrome();
     notifyWaiting();
   } catch {
     $("live").classList.add("down");
@@ -852,6 +953,177 @@ function notifyWaiting() {
   lastWaiting = pending.length;
 }
 
+// ---------------------------------------------------------------------------
+// Tabs. The hash names the tab, so a link can open straight to "Try it".
+// ---------------------------------------------------------------------------
+const TABS = ["overview", "try", "mandates", "activity"];
+function showTab(name, focus = false, animate = true) {
+  if (!TABS.includes(name)) name = "overview";
+  for (const n of TABS) {
+    const tab = $(`t-${n}`), panel = $(`p-${n}`), on = n === name;
+    tab.setAttribute("aria-selected", String(on));
+    tab.tabIndex = on ? 0 : -1;
+    const was = panel.hidden;
+    panel.hidden = !on;
+    if (on && was && animate && !still()) gsap.from(panel.children, { autoAlpha: 0, y: 8, stagger: 0.05, duration: 0.3, clearProps: "all" });
+  }
+  if (focus) $(`t-${name}`).focus();
+  if (location.hash.slice(1) !== name) history.replaceState(null, "", `#${name}`);
+  if (name === "try") loadScenarios();
+}
+document.querySelector(".tabs").addEventListener("click", e => {
+  const tab = e.target.closest("[role=tab]");
+  if (tab) showTab(tab.id.slice(2));
+});
+document.querySelector(".tabs").addEventListener("keydown", e => {
+  const i = TABS.indexOf(document.activeElement?.id?.slice(2));
+  if (i < 0) return;
+  const next = e.key === "ArrowRight" ? (i + 1) % TABS.length : e.key === "ArrowLeft" ? (i + TABS.length - 1) % TABS.length
+    : e.key === "Home" ? 0 : e.key === "End" ? TABS.length - 1 : null;
+  if (next !== null) { e.preventDefault(); showTab(TABS[next], true); }
+});
+document.addEventListener("click", e => {
+  const go = e.target.closest?.("[data-goto]");
+  if (go) { e.preventDefault(); showTab(go.dataset.goto); window.scrollTo({ top: 0, behavior: still() ? "auto" : "smooth" }); }
+});
+addEventListener("hashchange", () => showTab(location.hash.slice(1)));
+
+/** Tab counts and the short list of latest decisions on Overview. */
+function paintChrome() {
+  const waiting = (state.approvals ?? []).filter(x => x.status === "PENDING").length + (state.toCollect ?? []).length;
+  $("tc-overview").textContent = waiting || "";
+  $("tc-activity").textContent = (state.audit ?? []).length || "";
+  const latest = [...(state.audit ?? [])].reverse().slice(0, 5);
+  const box = $("recent");
+  let empty = box.querySelector(".empty");
+  if (!empty) {
+    empty = Object.assign(document.createElement("p"), { className: "empty" });
+    empty.innerHTML = `<span>Nothing yet. Open <button class="link" data-goto="try">Try it</button> and run a scenario.</span>`;
+    box.prepend(empty);
+  }
+  empty.hidden = latest.length > 0;
+  reconcile(box.querySelector(".list") ?? box.appendChild(Object.assign(document.createElement("div"), { className: "list" })),
+    latest, e => e.hash, e => `
+    <div class="evrow" style="grid-template-columns:86px 78px 1fr auto">
+      <span class="t num">${when(e.at)}</span>${badge(e.outcome)}
+      <span>${esc(e.tool === "create_order" ? `${e.merchant ?? ""}` : e.tool)}${e.amount != null ? ` · <span class="num">${money(e.amount, e.currency)}</span>` : ""}</span>
+      <span class="r">${esc(e.violations.map(v => v.rule).join(", ") || (e.tool === "pay_order" ? "paid" : "within the mandate"))}</span>
+    </div>`);
+}
+
+// ---------------------------------------------------------------------------
+// Try it: run the real agent from the browser and watch each step.
+// ---------------------------------------------------------------------------
+let scenarios = null, runningNow = false;
+async function loadScenarios() {
+  const r = await fetch("/api/scenarios").catch(() => null);
+  if (!r?.ok) return;
+  scenarios = await r.json();
+  const live = scenarios.catalog === "live";
+  $("try-catalog").innerHTML = `Shopping ${live ? "<b>live</b> at real retailers through Channel3" : "the <b>demo shop</b>, a fixed catalogue"}` +
+    `${scenarios.model ? ` · agent model <code>${esc(scenarios.model)}</code>` : ""}` +
+    (live && scenarios.presets.fixed ? ` · <button class="link" data-preset="mnd_demo_001">use the demo shop</button>`
+      : !live && scenarios.presets.live ? ` · <button class="link" data-preset="mnd_live_001">shop live instead</button>` : "");
+  $("scenarios").innerHTML = scenarios.scenarios.map(s => `
+    <button class="scenario" data-task="${esc(s.task)}" ${runningNow ? "disabled" : ""}>
+      <span class="st">${esc(s.title)} ${badge(s.expect)}</span>
+      <span class="sq">"${esc(s.task)}"</span>
+      <span class="sw">${esc(s.why)}</span>
+    </button>`).join("");
+}
+
+$("p-try").addEventListener("click", async e => {
+  const preset = e.target.closest("[data-preset]");
+  if (preset) {
+    await fetch(`/api/mandates/${preset.dataset.preset}/activate`, { method: "POST" });
+    toast(preset.dataset.preset === "mnd_live_001" ? "Now shopping live, under the Best Buy mandate." : "Now shopping the demo shop, under the TechStore mandate.", "good");
+    await load(); await loadScenarios();
+    return;
+  }
+  const s = e.target.closest(".scenario");
+  if (s && !runningNow) runAgent(s.dataset.task);
+});
+$("ask").addEventListener("submit", e => {
+  e.preventDefault();
+  const task = $("ask-text").value.trim();
+  if (task && !runningNow) runAgent(task);
+});
+
+/** Just enough Markdown for an agent's reply: bold and inline code, on escaped text. */
+const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+const RESULT_CLASS = text => /refused this request/.test(text) ? "res-block" : /escalated this request/.test(text) ? "res-approve" : /^Order /.test(text) ? "res-allow" : "";
+function addMsg(cls, who, html) {
+  const el = Object.assign(document.createElement("div"), { className: `msg ${cls}` });
+  el.innerHTML = `<span class="who">${esc(who)}</span>${html}`;
+  const box = $("transcript");
+  box.querySelector(".typing-row")?.before(el) ?? box.append(el);
+  if (!still()) gsap.from(el, { autoAlpha: 0, y: 10, duration: 0.3 });
+  return el;
+}
+function typing(on) {
+  const box = $("transcript");
+  box.querySelector(".typing-row")?.remove();
+  if (on) box.insertAdjacentHTML("beforeend", `<div class="msg wait typing-row"><span class="typing"><i></i><i></i><i></i></span> the agent is thinking</div>`);
+  if (on && !still()) gsap.to(".typing i", { y: -4, duration: 0.35, stagger: 0.12, repeat: -1, yoyo: true, ease: "sine.inOut" });
+}
+
+function runAgent(task) {
+  runningNow = true;
+  document.querySelectorAll(".scenario, #ask-go").forEach(b => b.disabled = true);
+  $("run-state").textContent = "running";
+  $("transcript").innerHTML = "";
+  addMsg("you", "You", esc(task));
+  typing(true);
+  $("run-h").scrollIntoView({ behavior: still() ? "auto" : "smooth", block: "start" });
+  const unattended = $("unattended").checked ? "1" : "0";
+  const es = new EventSource(`/api/agent/run?task=${encodeURIComponent(task)}&unattended=${unattended}`);
+  let outcome = null;
+  const finish = () => {
+    es.close(); typing(false);
+    runningNow = false;
+    document.querySelectorAll(".scenario, #ask-go").forEach(b => b.disabled = false);
+    $("run-state").textContent = "";
+    load();
+  };
+  es.onmessage = m => {
+    const e = JSON.parse(m.data);
+    if (e.type === "say") addMsg("", "Agent", md(e.text));
+    else if (e.type === "call") addMsg("call", `Agent calls ${e.tool}`, esc(JSON.stringify(e.args, null, 1)));
+    else if (e.type === "result") {
+      const cls = RESULT_CLASS(e.text);
+      if (cls) outcome = cls;
+      const long = e.tool === "search_products" && e.text.length > 280;
+      addMsg(cls, e.tool === "search_products" ? "Catalogue" : `Spendward on ${e.tool}`,
+        long ? `<details><summary>${esc(e.text.split("\n\n---")[0].split("\n").slice(0, 2).join(" · "))} … ${e.text.split("---").length} listings</summary>${esc(e.text)}</details>` : esc(e.text));
+    }
+    else if (e.type === "wait") addMsg("wait", "Model busy", `retrying in ${e.seconds}s`);
+    else if (e.type === "error") { addMsg("res-block", "Error", esc(e.text)); finish(); }
+    else if (e.type === "end") {
+      finish();
+      if (outcome === "res-approve") toast("Waiting for you in Overview.", "good");
+      else if (outcome === "res-block") toast("Spendward refused it. PayPal was never called.", "bad");
+      else if (outcome === "res-allow") toast("Allowed. The order is at PayPal.", "good");
+    }
+  };
+  es.onerror = () => { if (runningNow) { addMsg("res-block", "Error", "Lost the connection to the server."); finish(); } };
+}
+
+$("reset-demo").addEventListener("click", () => openDialog($("confirm-reset")));
+$("reset-cancel").addEventListener("click", () => $("confirm-reset").close());
+$("reset-go").addEventListener("click", async e => {
+  e.target.disabled = true;
+  const r = await fetch("/api/demo/reset", { method: "POST" });
+  const b = await r.json().catch(() => ({}));
+  e.target.disabled = false;
+  $("confirm-reset").close();
+  if (!r.ok) return toast(b.error ?? "Could not reset.", "bad");
+  // Rebuild what was drawn from the old record.
+  seen = null;
+  $("transcript").innerHTML = `<p class="empty">Nothing has run yet. Pick a scenario above.</p>`;
+  toast("Demo reset. Mandates and wallet kept.", "good");
+  await load();
+});
+
 // The opening, once per page load: the mark draws itself, then the page settles in.
 function intro() {
   if (still()) return;
@@ -867,11 +1139,15 @@ function intro() {
     .from(".wordmark > *", { autoAlpha: 0, x: -8, stagger: 0.08, duration: 0.4 }, 0.25)
     .from(".flow .node, .flow .track", { autoAlpha: 0, y: 12, stagger: 0.06, duration: 0.45 }, 0.35)
     .from(".cards .card", { autoAlpha: 0, y: 12, stagger: 0.06, duration: 0.45 }, 0.55)
-    .from(".wrap > section", { autoAlpha: 0, y: 12, stagger: 0.08, duration: 0.45 }, 0.75)
+    .from(".tabs [role=tab]", { autoAlpha: 0, y: 6, stagger: 0.05, duration: 0.35 }, 0.3)
+    .from(".panel:not([hidden]) > section", { autoAlpha: 0, y: 12, stagger: 0.08, duration: 0.45 }, 0.75)
     .set([line, ring], { clearProps: "strokeDasharray,strokeDashoffset" });
   gsap.to(".live i", { scale: 1.6, autoAlpha: 0.35, duration: 1.1, repeat: -1, yoyo: true, ease: "sine.inOut" });
 }
 
+// No tab animation on first paint: the opening sequence animates the panel,
+// and two from() tweens on one element would leave it invisible.
+showTab(location.hash.slice(1) || "overview", false, false);
 intro();
 load();
 setInterval(load, 4000);

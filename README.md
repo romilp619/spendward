@@ -30,7 +30,7 @@ Spendward answers that second question.
 > PayPal's protections protect PayPal and the merchant.
 > Spendward protects the buyer from their own agent.
 
-![Spendward dashboard: seven agent requests, three passed and four stopped, three reaching PayPal; USD 508 spent against a USD 1000 mandate; PayPal's own verified confirmation of the checkout; and an audit trail showing one payment allowed, two refused, two escalated, and one captured two seconds after PayPal confirmed it](docs/dashboard.png)
+![Spendward dashboard, Overview tab: the pipeline from agent to Spendward to PayPal, the active mandate and this month's spend, a payment waiting for the buyer, an escalation showing the exact PayPal account it would pay, and the latest decisions](docs/dashboard.png)
 
 ## What it does
 
@@ -300,6 +300,15 @@ your app. To give each shop its own till, create more business accounts under
 `merchants.json`, then run `npm run mint` again.
 
 ### Run
+
+The quickest way to see it work: `npm run web`, open **localhost:3000**, go to
+the **Try it** tab and click a scenario. A real agent runs in front of you and
+the transcript shows each tool call and Spendward's answer. **Reset demo**
+clears the record whenever you want to start over.
+
+![The Try it tab: the agent reads a listing that says a monthly plan is required, adds it to the order, and Spendward refuses the order before PayPal is called](docs/try-it.png)
+
+From the terminal:
 
 ```bash
 npm run web                  # the dashboard at localhost:3000

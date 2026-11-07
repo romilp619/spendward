@@ -14,6 +14,13 @@ import { chat, type Message } from "../lib/llm.js";
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 
+/**
+ * With SPENDWARD_EVENTS_JSON=1 every step is one JSON line instead of
+ * coloured text, so the dashboard can stream a run and draw it.
+ */
+const json = process.env.SPENDWARD_EVENTS_JSON === "1";
+const emit = (e: Record<string, unknown>) => { if (json) console.log(JSON.stringify(e)); };
+
 const task = process.argv.slice(2).join(" ") || "Buy me the Bose headphones from TechStore.";
 
 const transport = new StdioClientTransport({
@@ -51,30 +58,36 @@ const messages: Message[] = [
   { role: "user", content: task },
 ];
 
-console.log(bold(`\nUSER TASK: ${task}\n`));
+if (json) emit({ type: "task", text: task });
+else console.log(bold(`\nUSER TASK: ${task}\n`));
 
 for (let turn = 0; turn < 6; turn++) {
   const reply = await chat(messages, {
     tools: openaiTools,
-    onRetry: (wait, attempt) => console.log(dim(`  (model busy, retrying in ${wait / 1000}s -- attempt ${attempt}/6)`)),
+    onRetry: (wait, attempt) =>
+      json ? emit({ type: "wait", seconds: wait / 1000, attempt })
+        : console.log(dim(`  (model busy, retrying in ${wait / 1000}s -- attempt ${attempt}/6)`)),
   });
   messages.push(reply);
 
-  if (reply.content) console.log(dim(`agent: ${reply.content.trim()}\n`));
+  if (reply.content) json ? emit({ type: "say", text: reply.content.trim() }) : console.log(dim(`agent: ${reply.content.trim()}\n`));
   if (!reply.tool_calls?.length) break;
 
   for (const call of reply.tool_calls) {
     const args = JSON.parse(call.function.arguments) as Record<string, unknown>;
-    console.log(bold(`→ ${call.function.name}`), JSON.stringify(args));
+    if (json) emit({ type: "call", tool: call.function.name, args });
+    else console.log(bold(`→ ${call.function.name}`), JSON.stringify(args));
 
     const result = await mcp.callTool({ name: call.function.name, arguments: args });
     const text = (result.content as Array<{ type: string; text?: string }>)
       .map((c) => c.text ?? "")
       .join("\n");
 
-    console.log(result.isError ? `\x1b[31m${text}\x1b[0m\n` : dim(`${text}\n`));
+    if (json) emit({ type: "result", tool: call.function.name, error: Boolean(result.isError), text });
+    else console.log(result.isError ? `\x1b[31m${text}\x1b[0m\n` : dim(`${text}\n`));
     messages.push({ role: "tool", tool_call_id: call.id, content: text });
   }
 }
 
+emit({ type: "done" });
 await mcp.close();
