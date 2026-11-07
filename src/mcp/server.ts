@@ -22,6 +22,7 @@ import { evaluate } from "../lib/policy.js";
 import { createOrder, captureOrder, getOrder } from "../lib/paypal.js";
 import { record, spentUnder } from "../lib/audit.js";
 import { park } from "../lib/approvals.js";
+import { revokedAt } from "../lib/revocations.js";
 import { search } from "../demo/catalog.js";
 import * as channel3 from "../lib/channel3.js";
 
@@ -78,7 +79,7 @@ async function guarded<T>(
     isSubscription: false,
   };
 
-  const decision = evaluate(mandate, probe, { spent: spentUnder(mandate.mandate.id) });
+  const decision = evaluate(mandate, probe, { spent: spentUnder(mandate.mandate.id), revokedAt: revokedAt(mandate.mandate.id) });
 
   if (decision.outcome !== "ALLOW") {
     record({ agent, tool, decision, request, paypalOrderId: null });

@@ -233,8 +233,12 @@ function paint() {
 
   document.getElementById("cards").innerHTML = `
     <div class="card"><h2>Mandate</h2>
-      <div class="big num">${m ? money(m.maxTransactionAmount, m.currency) : "—"}</div>
-      <div class="sub">per transaction · <span class="num">${m ? money(m.maxTotalAmount, m.currency) : "—"}</span> total</div></div>
+      ${state.revokedAt
+        ? `<div class="big" style="color:var(--block)">revoked</div>
+           <div class="sub">${when(state.revokedAt)} · every request is now refused</div>`
+        : `<div class="big num">${m ? money(m.maxTransactionAmount, m.currency) : "—"}</div>
+           <div class="sub">per transaction · <span class="num">${m ? money(m.maxTotalAmount, m.currency) : "—"}</span> total</div>
+           ${m ? `<button data-revoke="1" style="margin-top:10px;padding:5px 12px;font-size:13px;color:var(--block);border-color:var(--block)">Revoke mandate</button>` : ""}`}</div>
     <div class="card"><h2>Spent</h2>
       <div class="big num">${money(spent, m?.currency)}</div>
       <div class="sub">${m ? `<span class="num">${money(state.spend?.collected ?? 0, m.currency)}</span> paid · <span class="num">${money(state.spend?.held ?? 0, m.currency)}</span> awaiting payment` : ""}</div>
@@ -388,6 +392,15 @@ document.getElementById("refresh").addEventListener("click", load);
 document.getElementById("detail-close").addEventListener("click", () =>
   document.getElementById("detail").close());
 
+// Revoking is final, so it asks first. Spending again needs a new mandate.
+document.getElementById("cards").addEventListener("click", async e => {
+  if (!e.target.dataset?.revoke) return;
+  if (!confirm("Revoke this mandate? Every later request will be refused, and pending approvals can no longer be granted. This cannot be undone.")) return;
+  e.target.disabled = true;
+  await fetch("/api/mandate/revoke", { method: "POST" });
+  await load();
+});
+
 document.getElementById("pending").addEventListener("click", async e => {
   const d = e.target.dataset ?? {};
   const action = d.approve ? "approve" : d.reject ? "reject" : d.capture ? "capture" : null;
@@ -398,6 +411,7 @@ document.getElementById("pending").addEventListener("click", async e => {
   const res = await fetch(action === "capture" ? `/api/orders/${encodeURIComponent(id)}/capture` : `/api/approvals/${id}/${action}`, { method: "POST" });
   const body = await res.json().catch(() => ({}));
 
+  if (action === "approve" && !res.ok) alert(body.error ?? "approval refused");
   if (action === "capture") {
     const slot = document.querySelector(`[data-result="${id}"]`);
     if (slot) slot.textContent = res.ok ? `captured: ${body.status}` : body.error;

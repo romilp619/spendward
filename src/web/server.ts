@@ -13,6 +13,8 @@ import { list as listApprovals, get as getApproval, decide, markCaptured } from 
 import { createOrder, captureOrder, getAccessToken } from "../lib/paypal.js";
 import type { SignedMandate } from "../lib/mandate.js";
 import { recordEvent, recentEvents } from "../lib/events.js";
+import { evaluate } from "../lib/policy.js";
+import { revoke, revokedAt } from "../lib/revocations.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -49,6 +51,7 @@ app.get("/api/state", (c) => {
     // Computed by the same function the policy engine uses. The dashboard must
     // not do its own arithmetic, or the figure a user reads stops matching the
     // figure their limits are enforced against.
+    revokedAt: m ? revokedAt(m.id) : null,
     spent: m ? spentUnder(m.id) : 0,
     spend: m ? spend(m.id) : { collected: 0, held: 0 },
     // Every order Spendward let through that nobody has paid for yet -- allowed
@@ -69,6 +72,21 @@ app.post("/api/approvals/:id/approve", async (c) => {
   const pending = getApproval(c.req.param("id"));
   if (!pending) return c.json({ error: "not found" }, 404);
   if (pending.status !== "PENDING") return c.json({ error: "already decided" }, 409);
+
+  // Run the rules again at the moment of approval. Time has passed since the
+  // request was parked: the budget may have filled, the mandate may have
+  // expired or been revoked. The principal can waive what they were asked
+  // about, not whatever has changed since.
+  const signed = mandate();
+  if (!signed || signed.mandate.id !== pending.mandateId) {
+    return c.json({ error: "this approval belongs to a mandate that is no longer loaded" }, 409);
+  }
+  const now = evaluate(signed, pending.request, { spent: spentUnder(signed.mandate.id), revokedAt: revokedAt(signed.mandate.id) });
+  if (now.outcome === "BLOCK") {
+    record({ agent: pending.agent, tool: "create_order", decision: now, request: pending.request, paypalOrderId: null });
+    decide(pending.id, "REJECTED");
+    return c.json({ error: `can no longer be approved: ${now.violations.filter((v) => !v.escalatable).map((v) => v.rule).join(", ")}` }, 409);
+  }
 
   // The order is only created now. Until the principal approved, PayPal had
   // seen nothing at all.
@@ -142,6 +160,18 @@ app.post("/api/approvals/:id/capture", async (c) => {
   if (!pending?.paypalOrderId) return c.json({ error: "no order to capture" }, 404);
   const r = await collect(pending.paypalOrderId);
   return r.ok ? c.json({ status: r.status }) : c.json({ error: r.error }, r.code);
+});
+
+/**
+ * Revokes the loaded mandate. Final: every later request is refused, parked
+ * approvals can no longer be granted, and spending again needs a new mandate.
+ * Orders already at PayPal are not touched -- revoking stops new spending, it
+ * does not undo old spending.
+ */
+app.post("/api/mandate/revoke", (c) => {
+  const signed = mandate();
+  if (!signed) return c.json({ error: "no mandate loaded" }, 404);
+  return c.json({ mandateId: signed.mandate.id, revokedAt: revoke(signed.mandate.id) });
 });
 
 app.post("/api/approvals/:id/reject", (c) => {

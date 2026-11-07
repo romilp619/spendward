@@ -38,18 +38,6 @@ Nine scenarios, five models, one agent implementation, one task phrasing.
 Enough to show that susceptibility varies and the enforcement point holds; not
 enough to characterise any model's susceptibility in general.
 
-## No mandate revocation
-
-A mandate is valid until it expires. There is no way to revoke one early.
-
-## Approving an escalation is not re-evaluated
-
-When the principal approves a parked payment, Spendward creates the order
-without re-running the policy. The approval is recorded as spend, so the
-cumulative cap sees it and constrains everything after -- but if the mandate
-changed, or a different payment was approved in between, the approved request
-is not checked again against the current state.
-
 ## The capture guard is not atomic
 
 Capture checks the approval's status, calls PayPal, then marks it captured.
@@ -75,3 +63,10 @@ Spendward when a buyer abandons checkout, so an unpaid order instead stops
 holding budget after `SPENDWARD_RESERVE_HOURS` (default 3). If the buyer pays
 after that, the capture still counts -- but in the gap, the budget it held was
 briefly available to other orders.
+
+## Revoking stops new spending, not old
+
+Revoking a mandate refuses every later request and every pending approval. It
+does not cancel orders already created at PayPal: a buyer can still pay one,
+and Spendward will still capture it, because the authority was valid when the
+order was made. Undoing a payment is a refund, which is a human's decision.

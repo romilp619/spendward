@@ -40,6 +40,8 @@ export interface Decision {
 export interface LedgerState {
   /** Already spent under this mandate, in its currency. */
   spent: number;
+  /** When the principal revoked this mandate, if they did. */
+  revokedAt?: string | null;
 }
 
 const money = (n: number, currency: string) => `${currency} ${n.toFixed(2)}`;
@@ -82,6 +84,25 @@ export function evaluate(
   }
 
   const m: Mandate = signed.mandate;
+
+  // Revocation outranks every other rule: the principal has withdrawn the
+  // authority this mandate granted, and no approval can restore it.
+  if (ledger.revokedAt) {
+    return {
+      outcome: "BLOCK",
+      mandateId: m.id,
+      violations: [
+        {
+          rule: "MANDATE_REVOKED",
+          severity: "CRITICAL",
+          policy: `revoked by the principal at ${ledger.revokedAt}`,
+          requested: request.tool,
+          evidence: "this mandate no longer grants any authority",
+          escalatable: false,
+        },
+      ],
+    };
+  }
 
   if (new Date(m.expiresAt) <= now) {
     v.push({

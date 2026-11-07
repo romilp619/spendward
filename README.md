@@ -54,6 +54,12 @@ Spendward runs as an **MCP server that mirrors PayPal's tool names**, so any MCP
 client points at Spendward instead of PayPal and nothing about the agent changes.
 Every call is evaluated against the mandate before PayPal is contacted.
 
+You can revoke a mandate from the dashboard at any moment. Every later request
+is refused, and approvals still waiting can no longer be granted. When you do
+approve an escalation, the rules run again first: if the budget has filled or
+the mandate has expired or been revoked since the request was parked, the
+approval is refused.
+
 Three outcomes:
 
 | | |

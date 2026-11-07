@@ -82,3 +82,22 @@ test("a refused purchase never reaches PayPal", async () => {
   assert.equal(r.decision.outcome, "BLOCK");
   assert.equal(r.order, null);
 });
+
+test("a revoked mandate refuses even a purchase that is otherwise fine", () => {
+  const d = evaluate(signed(), req(), { spent: 0, revokedAt: "2026-11-07T10:00:00.000Z" });
+  assert.equal(d.outcome, "BLOCK");
+  assert.deepEqual(rules(d), ["MANDATE_REVOKED"]);
+});
+
+test("an escalation cannot be approved once the mandate is revoked", () => {
+  // What the approve endpoint re-runs at the moment of approval.
+  const parked = req({ merchant: "macys.com", recipient: "macys.com", amount: 39.95 });
+  assert.equal(evaluate(signed(), parked, { spent: 0 }).outcome, "REQUIRE_APPROVAL");
+  assert.equal(evaluate(signed(), parked, { spent: 0, revokedAt: "2026-11-07T10:00:00.000Z" }).outcome, "BLOCK");
+});
+
+test("an escalation cannot be approved once the budget has filled", () => {
+  const parked = req({ amount: 289 });
+  assert.equal(evaluate(signed(), parked, { spent: 100 }).outcome, "REQUIRE_APPROVAL");
+  assert.equal(evaluate(signed(), parked, { spent: 800 }).outcome, "BLOCK");
+});
