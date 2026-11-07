@@ -271,13 +271,13 @@
     --approve: #a16207; --approve-bg: rgba(245,158,11,.13);
     --glow: rgba(58,91,255,.22);
     --shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 12px 32px -18px rgba(30,41,90,.28), 0 2px 6px -2px rgba(30,41,90,.08);
-    --aurora-1: rgba(58,91,255,.20); --aurora-2: rgba(168,85,247,.16); --aurora-3: rgba(6,182,212,.14);
+    --aurora-1: rgba(58,91,255,.22); --aurora-2: rgba(168,85,247,.18); --aurora-3: rgba(6,182,212,.15); --aurora-4: rgba(99,102,241,.14);
     --gridline: rgba(15,23,42,.045);
     --radius: 14px;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #060a14; --panel: rgba(15,21,36,.62); --panel-solid: #0e1424; --ink: #e8edf7;
+      --bg: #060a14; --panel: rgba(13,19,34,.55); --panel-solid: #0e1424; --ink: #e8edf7;
       --muted: #8d98ad; --line: rgba(148,163,184,.13); --line-strong: rgba(148,163,184,.24);
       --field: rgba(8,12,24,.7);
       --accent: #6d8bff; --accent-2: #a78bfa; --accent-3: #22d3ee;
@@ -287,12 +287,12 @@
       --approve: #fbbf24; --approve-bg: rgba(251,191,36,.10);
       --glow: rgba(109,139,255,.35);
       --shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 18px 40px -20px rgba(0,0,0,.75), 0 2px 8px -2px rgba(0,0,0,.4);
-      --aurora-1: rgba(59,91,255,.30); --aurora-2: rgba(139,92,246,.24); --aurora-3: rgba(34,211,238,.13);
+      --aurora-1: rgba(59,91,255,.34); --aurora-2: rgba(139,92,246,.30); --aurora-3: rgba(34,211,238,.16); --aurora-4: rgba(79,70,229,.26);
       --gridline: rgba(148,163,184,.055);
     }
   }
   :root[data-theme="dark"] {
-    --bg: #060a14; --panel: rgba(15,21,36,.62); --panel-solid: #0e1424; --ink: #e8edf7;
+    --bg: #060a14; --panel: rgba(13,19,34,.55); --panel-solid: #0e1424; --ink: #e8edf7;
     --muted: #8d98ad; --line: rgba(148,163,184,.13); --line-strong: rgba(148,163,184,.24);
     --field: rgba(8,12,24,.7);
     --accent: #6d8bff; --accent-2: #a78bfa; --accent-3: #22d3ee;
@@ -302,7 +302,7 @@
     --approve: #fbbf24; --approve-bg: rgba(251,191,36,.10);
     --glow: rgba(109,139,255,.35);
     --shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 18px 40px -20px rgba(0,0,0,.75), 0 2px 8px -2px rgba(0,0,0,.4);
-    --aurora-1: rgba(59,91,255,.30); --aurora-2: rgba(139,92,246,.24); --aurora-3: rgba(34,211,238,.13);
+    --aurora-1: rgba(59,91,255,.34); --aurora-2: rgba(139,92,246,.30); --aurora-3: rgba(34,211,238,.16); --aurora-4: rgba(79,70,229,.26);
     --gridline: rgba(148,163,184,.055);
   }
 
@@ -314,30 +314,35 @@
   }
   code, .msg.call, .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
 
-  /* The backdrop: slow aurora light over a fine precision grid that fades out
-     toward the edges. Fixed, behind everything, never under the pointer. */
-  body::before, body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1; }
-  body::before {
-    background:
-      radial-gradient(42% 38% at 12% 8%, var(--aurora-1), transparent 70%),
-      radial-gradient(38% 34% at 88% 14%, var(--aurora-2), transparent 70%),
-      radial-gradient(46% 40% at 70% 96%, var(--aurora-3), transparent 72%),
-      var(--bg);
-    animation: aurora 28s ease-in-out infinite alternate;
-  }
+  /* The backdrop fills the whole screen: five fields of aurora light, each
+     drifting on its own slow path, over a precision grid that covers the page
+     and fades only at the far edges. Fixed, behind everything, never under
+     the pointer, and still under reduced motion. */
+  body::before, body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -2; }
+  body::before { background: var(--bg); }
   body::after {
+    z-index: -1;
     background-image:
       linear-gradient(var(--gridline) 1px, transparent 1px),
       linear-gradient(90deg, var(--gridline) 1px, transparent 1px);
     background-size: 44px 44px;
-    -webkit-mask-image: radial-gradient(ellipse 75% 60% at 50% 18%, #000 30%, transparent 78%);
-            mask-image: radial-gradient(ellipse 75% 60% at 50% 18%, #000 30%, transparent 78%);
+    -webkit-mask-image: radial-gradient(ellipse 150% 120% at 50% 35%, #000 50%, transparent 100%);
+            mask-image: radial-gradient(ellipse 150% 120% at 50% 35%, #000 50%, transparent 100%);
   }
-  @keyframes aurora {
-    0%   { filter: hue-rotate(0deg);   transform: scale(1); }
-    100% { filter: hue-rotate(-18deg); transform: scale(1.06); }
-  }
-  @media (prefers-reduced-motion: reduce) { body::before { animation: none; } }
+  .aurora { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+  .aurora i { position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%; will-change: transform; }
+  .aurora i:nth-child(1) { left: -22vmax; top: -30vmax; background: radial-gradient(circle, var(--aurora-1), transparent 62%); animation: drift-a 34s ease-in-out infinite alternate; }
+  .aurora i:nth-child(2) { right: -24vmax; top: -24vmax; background: radial-gradient(circle, var(--aurora-2), transparent 62%); animation: drift-b 40s ease-in-out infinite alternate; }
+  .aurora i:nth-child(3) { left: -30vmax; top: 30vh;  background: radial-gradient(circle, var(--aurora-3), transparent 62%); animation: drift-c 46s ease-in-out infinite alternate; }
+  .aurora i:nth-child(4) { right: -28vmax; top: 38vh; background: radial-gradient(circle, var(--aurora-4), transparent 62%); animation: drift-a 52s ease-in-out infinite alternate-reverse; }
+  .aurora i:nth-child(5) { left: 18vw; bottom: -46vmax; background: radial-gradient(circle, var(--aurora-2), transparent 60%); animation: drift-b 44s ease-in-out infinite alternate-reverse; }
+  /* A soft vignette keeps the edges deep and the centre readable. */
+  .aurora::after { content: ""; position: absolute; inset: 0;
+                   background: radial-gradient(ellipse 120% 100% at 50% 40%, transparent 55%, color-mix(in srgb, var(--bg) 70%, transparent) 100%); }
+  @keyframes drift-a { from { transform: translate(0, 0) scale(1); }    to { transform: translate(10vmax, 8vmax) scale(1.12); } }
+  @keyframes drift-b { from { transform: translate(0, 0) scale(1.05); } to { transform: translate(-9vmax, 10vmax) scale(.94); } }
+  @keyframes drift-c { from { transform: translate(0, 0) scale(.95); }  to { transform: translate(12vmax, -8vmax) scale(1.1); } }
+  @media (prefers-reduced-motion: reduce) { .aurora i { animation: none; } }
 
   /* Glass surfaces */
   .node, .card, section, dialog, .toast {
@@ -437,6 +442,7 @@
 </style>
 </head>
 <body>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 <div class="wrap">
   <header>
     <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
