@@ -417,7 +417,7 @@
     outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 1px; box-shadow: 0 0 0 6px var(--glow); }
 
   /* Decisions keep their colours, with a finer finish. */
-  .approval { border-color: color-mix(in srgb, var(--approve) 55%, transparent); border-radius: 12px; }
+  article.approval { border-color: color-mix(in srgb, var(--approve) 55%, transparent); border-radius: 12px; }
   section.urgent { border-color: color-mix(in srgb, var(--approve) 55%, transparent);
                    box-shadow: var(--shadow), 0 0 40px -14px color-mix(in srgb, var(--approve) 45%, transparent); }
   .count { background: var(--approve); color: #1a1200; }
@@ -440,6 +440,67 @@
   /* The audit grid sits on glass. */
   #grid .ag-root-wrapper { border: 0; border-radius: 0; background: transparent; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /* ==========================================================================
+     Spacing. One scale (8 / 12 / 16 / 20 / 24 / 32 / 40) applied everywhere,
+     so the page breathes evenly. Layout only: colours and behaviour unchanged.
+     ========================================================================== */
+  :root { --gap: 20px; --pad: 22px; --section-gap: 28px; }
+  .wrap { max-width: 1280px; padding: 40px 28px 104px; }
+
+  header { padding: 0 0 26px; gap: 14px; }
+  .wordmark { gap: 12px; }
+  .tabs { margin: 0 -28px 36px; padding: 0 28px; gap: 6px; }
+  .tabs [role=tab] { padding: 14px 16px 15px; }
+
+  .flow { grid-template-columns: 1fr 76px 1fr 76px 1fr; margin: 0 0 var(--gap); }
+  .node { padding: 20px var(--pad); gap: 4px; }
+  .nsub { margin-top: 2px; }
+
+  .cards { gap: var(--gap); margin: 0 0 var(--section-gap); }
+  .card { padding: 20px var(--pad) 22px; }
+  .card h2 { margin: 0 0 10px; }
+  .card .sub { margin-top: 6px; line-height: 1.55; }
+  .meter { margin-top: 16px; }
+  .revoke { margin-top: 14px; }
+
+  section { margin-bottom: var(--section-gap); }
+  section > h2 { padding: 18px var(--pad); }
+  .pending { padding: var(--pad); gap: 16px; }
+  article.approval { padding: 20px var(--pad); }
+  .approval ul { margin-top: 14px; }
+  .payee { margin-top: 12px; }
+  .actions { margin-top: 20px; gap: 10px; }
+  .evrow { padding: 13px 0; gap: 16px; }
+  .empty { padding: 4px 0; }
+
+  .toolbar { padding: 16px var(--pad); gap: 12px; }
+  .walletline { padding: 20px var(--pad); gap: 16px; }
+  .mrow { padding: 18px 0; gap: 16px; }
+
+  .howto { padding: var(--pad); gap: 24px; }
+  .scenarios { padding: var(--pad); gap: 16px; }
+  .scenario { padding: 18px 20px; gap: 8px; }
+  .ask { padding: 0 var(--pad) var(--pad); gap: 12px; }
+  .transcript { padding: var(--pad); gap: 12px; }
+  .msg { padding: 12px 16px; }
+
+  dialog h3 { padding: 18px var(--pad); }
+  .detail { padding: var(--pad); }
+  .close { padding: 0 var(--pad) var(--pad); }
+  .form { gap: 14px 18px; margin-top: 18px; }
+
+  .toasts { right: 24px; bottom: 24px; gap: 10px; }
+  .toast { padding: 13px 16px; }
+
+  @media (max-width: 760px) {
+    :root { --gap: 14px; --pad: 16px; --section-gap: 20px; }
+    .wrap { padding: 24px 16px 72px; }
+    .tabs { margin: 0 -16px 24px; padding: 0 16px; }
+    .flow { grid-template-columns: 1fr; }
+    .track { height: 32px; margin: 4px 0; }
+    .howto { gap: 14px; }
+  }
 </style>
 </head>
 <body>
@@ -1005,7 +1066,8 @@ grid = agGrid.createGrid($("grid"), {
   theme: gridTheme(),
   columnDefs: columns,
   rowData: [],
-  rowHeight: 42,
+  rowHeight: 48,
+  headerHeight: 46,
   getRowId: p => p.data.hash,
   // Every decision carries its colour, so the outcome is readable from the row
   // itself without reading the badge.
