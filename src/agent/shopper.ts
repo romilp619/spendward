@@ -78,7 +78,22 @@ for (let turn = 0; turn < 6; turn++) {
     if (json) emit({ type: "call", tool: call.function.name, args });
     else console.log(bold(`→ ${call.function.name}`), JSON.stringify(args));
 
-    const result = await mcp.callTool({ name: call.function.name, arguments: args });
+    // PayPal's sandbox can take well over the MCP library's 60-second default
+    // to settle a payment. A call that outlives the wait may still have
+    // completed, so the agent is told exactly that rather than crashing, and
+    // is steered away from paying twice.
+    let result: { content: unknown; isError?: boolean };
+    try {
+      result = await mcp.callTool({ name: call.function.name, arguments: args }, undefined, { timeout: 180_000 });
+    } catch (err) {
+      const why = err instanceof Error ? err.message : String(err);
+      result = {
+        isError: true,
+        content: [{ type: "text", text:
+          `The ${call.function.name} call did not answer in time (${why}). It may still have completed at PayPal. ` +
+          "Do not retry it; tell the user to check the Spendward dashboard for the outcome." }],
+      };
+    }
     const text = (result.content as Array<{ type: string; text?: string }>)
       .map((c) => c.text ?? "")
       .join("\n");

@@ -303,7 +303,8 @@ app.get("/api/agent/run", (c) => {
     });
     // No shell: the task is passed as one argument, never interpreted.
     const child = spawn(process.execPath, ["--import", "tsx", "src/agent/shopper.ts", task], { env, cwd: process.cwd() });
-    const timer = setTimeout(() => child.kill("SIGKILL"), 180_000);
+    // Generous: one slow PayPal settlement can take minutes in the sandbox.
+    const timer = setTimeout(() => child.kill("SIGKILL"), 300_000);
     let buf = "";
     let failed = "";
     child.stdout.on("data", (d: Buffer) => {
