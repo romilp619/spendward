@@ -3,8 +3,8 @@
     "id": "mnd_live_001",
     "principal": "romil",
     "agent": "shopper-01",
-    "issuedAt": "2026-10-04T05:14:22.360Z",
-    "expiresAt": "2026-11-03T05:14:22.360Z",
+    "issuedAt": "2026-11-07T06:54:07.322Z",
+    "expiresAt": "2027-03-07T06:54:07.322Z",
     "currency": "USD",
     "maxTransactionAmount": 250,
     "maxTotalAmount": 1000,
@@ -22,5 +22,5 @@
       "pay_order"
     ]
   },
-  "signature": "aad72dae54d67b83e903f875283c6a70746a5baef46ecc93faa5649101d7fa30"
+  "signature": "b01a96d8539350d97bf4242acccde8958d581b0ec4fd82a15b0de64028a46f31"
 }

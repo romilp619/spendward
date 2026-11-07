@@ -21,7 +21,9 @@ const mandate: Mandate = {
   principal: "romil",
   agent: "shopper-01",
   issuedAt: new Date().toISOString(),
-  expiresAt: new Date(Date.now() + 30 * 864e5).toISOString(),
+  // Demo mandates outlive hackathon judging. A real grant should be much
+  // shorter -- expiry is what bounds the damage of a mandate nobody revoked.
+  expiresAt: new Date(Date.now() + Number(process.env.MANDATE_DAYS ?? 120) * 864e5).toISOString(),
   currency: "USD",
   maxTransactionAmount: 250,
   maxTotalAmount: 1000,

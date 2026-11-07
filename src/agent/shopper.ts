@@ -24,22 +24,42 @@ interface Message {
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Shared LLM gateways throttle bursts, especially on free models, and a demo
+ * that dies on the first "retry shortly" is worse than one that waits. Only
+ * load and rate-limit errors are retried; anything else surfaces at once.
+ */
 async function chat(messages: Message[], tools: unknown[]): Promise<Message> {
-  const res = await fetch(`${process.env.LLM_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.LLM_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ model: process.env.LLM_MODEL, messages, tools, temperature: 0 }),
-  });
-  const body = (await res.json()) as
-    | { choices: Array<{ message: Message }> }
-    | { error: { message: string } };
-  if ("error" in body) throw new Error(`LLM error: ${body.error.message}`);
-  const first = body.choices[0];
-  if (!first) throw new Error("LLM returned no choices");
-  return first.message;
+  const attempts = 6;
+  for (let i = 1; ; i++) {
+    const res = await fetch(`${process.env.LLM_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.LLM_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model: process.env.LLM_MODEL, messages, tools, temperature: 0 }),
+    });
+    const body = (await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }))) as
+      | { choices: Array<{ message: Message }> }
+      | { error: { message: string } };
+
+    if ("error" in body) {
+      const transient =
+        res.status === 429 || res.status >= 500 || /load|rate|retry|slow|busy/i.test(body.error.message);
+      if (!transient || i >= attempts) throw new Error(`LLM error: ${body.error.message}`);
+      const wait = Math.min(60_000, 5_000 * 2 ** (i - 1));
+      console.log(dim(`  (model busy, retrying in ${wait / 1000}s -- attempt ${i + 1}/${attempts})`));
+      await sleep(wait);
+      continue;
+    }
+
+    const first = body.choices[0];
+    if (!first) throw new Error("LLM returned no choices");
+    return first.message;
+  }
 }
 
 const task = process.argv.slice(2).join(" ") || "Buy me the Bose headphones from TechStore.";
