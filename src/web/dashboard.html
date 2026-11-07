@@ -1312,7 +1312,8 @@ function paintMandates() {
   $("m-left-s").textContent = m ? `of ${money(m.maxTotalAmount, m.currency)} ${PER[m.budgetPeriod] ?? "in total"}` : "";
   $("m-wallet").textContent = w ? "Connected" : "Not connected";
   $("m-wallet").style.color = w ? "var(--allow)" : "var(--muted)";
-  $("m-wallet-s").textContent = w ? (w.email ?? "PayPal Vault") : "orders wait for checkout";
+  // The address is in the wallet section just below; the card only says what it means.
+  $("m-wallet-s").textContent = w ? "pays with no checkout page" : "orders wait for checkout";
   const all = state.mandates ?? [];
   $("m-count").textContent = String(all.length);
   $("m-count-s").textContent = `${all.filter(x => x.revokedAt).length} revoked`;
