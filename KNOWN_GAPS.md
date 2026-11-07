@@ -40,9 +40,9 @@ enough to characterise any model's susceptibility in general.
 
 ## The capture guard is not atomic
 
-Capture checks the approval's status, calls PayPal, then marks it captured.
-Two clicks landing at the same moment can both pass the check before either
-writes. PayPal itself refuses the second capture, so money moves once -- but
+Capture checks the audit log for an existing capture of the order, calls
+PayPal, then records the capture. Two clicks -- or a click and a webhook --
+landing at the same moment can both pass the check before either writes. PayPal itself refuses the second capture, so money moves once -- but
 Spendward's own log can gain a duplicate entry.
 
 The approvals file is read-modify-write with no locking, which is the same
