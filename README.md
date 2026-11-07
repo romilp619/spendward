@@ -321,7 +321,10 @@ To pay at checkout, log in with the **personal** sandbox account PayPal created
 for you (Testing Tools -> Sandbox Accounts), not the business one: a business
 account cannot pay itself. To let the agent pay with no checkout at all, click
 **Connect PayPal wallet** in the dashboard once; your app needs Vault switched
-on (Apps & Credentials -> your app -> **Save payment methods**).
+on (Apps & Credentials -> your app -> **Save payment methods**). If you tick it
+on an existing app and Connect still says the app is not allowed, create a new
+sandbox app with the box ticked: PayPal can take hours to apply a feature
+change to an app that already exists, while a new app gets it at once.
 
 <details>
 <summary>Every command</summary>

@@ -348,7 +348,8 @@ app.post("/api/wallet/connect", async (c) => {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({
       error: message.includes("NOT_AUTHORIZED")
-        ? "Your PayPal app is not allowed to save payment methods yet. In the developer dashboard, open the app and turn on Vault (\"Save payment methods\")."
+        ? "Your PayPal app is not allowed to save payment methods yet. In the developer dashboard, open the app and tick \"Save payment methods\". " +
+          "If it is already ticked, create a new sandbox app with it ticked: changes to an existing app can take hours to apply."
         : message.slice(0, 240),
     }, 502);
   }
