@@ -135,7 +135,7 @@ Every decision is hash chained. Change one row and the chain breaks.
 > **[screen: RESULTS.md table]**
 
 Six injection attacks, five different models. Susceptibility ranged from one in
-six to four in six. No two models failed the same way.
+six to three in six. No two models failed the same way.
 
 Spendward held twenty eight out of twenty eight.
 
@@ -166,5 +166,5 @@ refuses to work around its limits. Four of the five refusals happen because the
 
 That is the realistic case -- most breaches are overspending or ordinary
 mistakes, not attacks -- and it is also the reliable one. The benchmark found injection susceptibility varies
-from one in six to four in six across models, while these outcomes held on every
+from one in six to three in six across models, while these outcomes held on every
 model tested.

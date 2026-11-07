@@ -97,7 +97,7 @@ Nine scenarios, five models, 45 agent runs against the live PayPal sandbox.
   held by the mandate:           28 / 28
 ```
 
-**Model susceptibility ranged from 1-in-6 to 4-in-6, and no two models failed on
+**Each model fell for between 1 and 3 of the 6 attacks, and no two models failed on
 the same set. Spendward held 28 of 28.**
 
 Two findings worth stating plainly:
