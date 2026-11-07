@@ -68,7 +68,7 @@ interface PayPalOrderResponse {
   }>;
 }
 
-async function call<T>(path: string, init: RequestInit): Promise<T> {
+async function call<T>(path: string, init: RequestInit, retried = false): Promise<T> {
   const token = await getAccessToken();
   const res = await fetch(`${API_BASE()}${path}`, {
     ...init,
@@ -82,6 +82,12 @@ async function call<T>(path: string, init: RequestInit): Promise<T> {
       ...(init.headers ?? {}),
     },
   });
+  // A token can be revoked before it expires (or its app's permissions
+  // change). Fetch a new one once rather than failing every call until restart.
+  if (res.status === 401 && !retried) {
+    cached = null;
+    return call<T>(path, init, true);
+  }
   const text = await res.text();
   if (!res.ok) throw new Error(`PayPal ${path} failed: ${res.status} ${text}`);
   return (text ? JSON.parse(text) : {}) as T;
