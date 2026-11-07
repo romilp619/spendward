@@ -82,9 +82,12 @@ for (let turn = 0; turn < 6; turn++) {
     // to settle a payment. A call that outlives the wait may still have
     // completed, so the agent is told exactly that rather than crashing, and
     // is steered away from paying twice.
-    let result: { content: unknown; isError?: boolean };
+    // The SDK's result type also covers task-style results; tools here always
+    // answer with content, which is the shape read below.
+    type ToolResult = { content?: unknown; isError?: boolean | undefined };
+    let result: ToolResult;
     try {
-      result = await mcp.callTool({ name: call.function.name, arguments: args }, undefined, { timeout: 180_000 });
+      result = (await mcp.callTool({ name: call.function.name, arguments: args }, undefined, { timeout: 180_000 })) as ToolResult;
     } catch (err) {
       const why = err instanceof Error ? err.message : String(err);
       result = {
@@ -94,7 +97,7 @@ for (let turn = 0; turn < 6; turn++) {
           "Do not retry it; tell the user to check the Spendward dashboard for the outcome." }],
       };
     }
-    const text = (result.content as Array<{ type: string; text?: string }>)
+    const text = ((result.content ?? []) as Array<{ type: string; text?: string }>)
       .map((c) => c.text ?? "")
       .join("\n");
 
