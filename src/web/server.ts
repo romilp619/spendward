@@ -79,7 +79,11 @@ app.post("/api/approvals/:id/approve", async (c) => {
   // about, not whatever has changed since.
   const signed = mandate();
   if (!signed || signed.mandate.id !== pending.mandateId) {
-    return c.json({ error: "this approval belongs to a mandate that is no longer loaded" }, 409);
+    const hint = pending.mandateId?.includes("live") ? "npm run web:live" : "npm run web";
+    return c.json({
+      error: `This request was made under mandate ${pending.mandateId}, but this dashboard is running ` +
+        `${signed ? signed.mandate.id : "without a mandate"}. Restart it with "${hint}" to decide it.`,
+    }, 409);
   }
   const now = evaluate(signed, pending.request, { spent: spentUnder(signed.mandate.id), revokedAt: revokedAt(signed.mandate.id) });
   if (now.outcome === "BLOCK") {
