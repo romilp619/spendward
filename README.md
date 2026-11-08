@@ -90,6 +90,21 @@ list after a block.
   key. The MCP server the agent talks to holds only the public key, and drops
   the private one if it is ever handed it. Change one character, or the
   account a shop's money goes to, and the signature fails.
+- **The order must be what the agent was shown.** Spendward records every
+  listing it returns. Each order item names its listing, and its shop, price
+  and category must match it exactly (`LISTING_MISMATCH`). An agent cannot
+  relabel a stranger's product as an allowed shop's, raise a price, or add a
+  line no listing offered, such as an injected "required" care plan.
+- **Revoking is total.** A revoked mandate places nothing new, cannot have
+  approvals granted, and Spendward will not capture any order made under it,
+  even one created before the revocation.
+- **Budget holds are honest.** An unpaid order holds budget for a set window.
+  Once the window ends the hold is released, and Spendward refuses to capture
+  that order, so the released budget can never be spent twice.
+- **No double spending under load.** Every write to the ledger, approvals and
+  captures happens under a cross-process lock, so two clicks, or a click and
+  a PayPal webhook, cannot both pay.
+- **The saved wallet is encrypted at rest** (AES-256-GCM).
 - **Budgets reset.** `$400 a month` means this calendar month, not forever.
 - **The record cannot be quietly rewritten.** Every decision is appended to an
   HMAC-chained log that doubles as the spend ledger. Without the key, editing a
@@ -111,17 +126,17 @@ list after a block.
   signed mandate, the request and the ledger. That is deliberate: a payment is
   refused whether the cause was an injection, a hallucination, or a bug.
 
-## What it does not do
+## Design principles
 
-- **It does not detect prompt injection.** Suspicious listing content is recorded
-  in the audit trail, never acted on. Detection is unreliable by nature.
-- **It does not use an LLM to decide whether money moves.** The policy engine is
-  thirteen deterministic rules. A model only drafts mandates, which you then sign.
-- **It does not harden the agent.** The agent is the untrusted component. That is
-  the premise, not an oversight.
-
-The mandate refuses a payment whether the cause was an injection, a
-hallucination, a bug, or a compromised tool — without needing to tell them apart.
+- **Enforce, don't detect.** Spotting prompt injection is unreliable by nature,
+  so Spendward never depends on it. A payment outside the mandate is refused
+  whatever caused it: an injection, a hallucination, a bug or a compromised tool.
+- **No model decides whether money moves.** Fourteen deterministic rules do.
+  The AI drafts mandates; you sign them.
+- **The agent is untrusted by design.** Spendward assumes the agent can be
+  fooled, and makes that harmless instead of hoping it won't happen.
+- **The money path is the control point.** Funds move only when Spendward
+  places or captures an order, so every refusal is final, not advisory.
 
 ## Benchmark
 
@@ -165,7 +180,7 @@ user. Run the same agent *unattended*, the way a scheduled or background agent
 runs, and a listing that presents a monthly plan as "required" fooled it
 **8 times out of 8**. Spendward refused all 8.
 
-Full detail in [RESULTS.md](RESULTS.md). Limitations in [KNOWN_GAPS.md](KNOWN_GAPS.md).
+Full detail in [RESULTS.md](RESULTS.md).
 
 ![PayPal sandbox checkout for the approved USD 289.00 payment](docs/checkout.png)
 
@@ -221,7 +236,7 @@ synthetic content in the live run.
   agent ──── MCP tool call ────────────────────────────────▶  Spendward
   (untrusted)                                                      │
                                     ├── verify the mandate with your public key
-                                    ├── 13 deterministic rules, no model
+                                    ├── 14 deterministic rules, no model
                                     ├── resolve the payee from the mandate, not the agent
                                     ├── append to the HMAC-chained audit log
                                     │
@@ -314,7 +329,7 @@ From the terminal:
 npm run web                  # the dashboard at localhost:3000
 npm run demo                 # the agent through six tasks, fixed catalogue
 npm run demo:live            # the same against Channel3's live catalogue
-npm test                     # 34 tests: rules, keys, payees, periods, chain; no network
+npm test                     # 43 tests: rules, keys, payees, listings, periods, chain, wallet; no network
 ```
 
 To pay at checkout, log in with the **personal** sandbox account PayPal created
@@ -413,7 +428,8 @@ npm run audit:verify
 | Path | |
 | --- | --- |
 | [src/lib/mandate.ts](src/lib/mandate.ts) | Ed25519-signed mandates, canonical encoding |
-| [src/lib/policy.ts](src/lib/policy.ts) | the thirteen rules — no model runs here |
+| [src/lib/policy.ts](src/lib/policy.ts) | the fourteen rules — no model runs here |
+| [src/lib/listings.ts](src/lib/listings.ts) | every listing shown to the agent, which orders are held to |
 | [src/lib/merchants.ts](src/lib/merchants.ts) | which PayPal account each shop pays |
 | [src/lib/checkout.ts](src/lib/checkout.ts) | places an allowed order: payee bound, saved wallet used |
 | [src/lib/paypal.ts](src/lib/paypal.ts) | Orders v2 and Vault (saved wallet) client |
@@ -446,7 +462,7 @@ npm run redteam
 New attacks are the most useful contribution. Add one to
 [redteam/attacks.ts](redteam/attacks.ts) with a `succeeded` predicate describing
 what the attack achieves, and run the harness. An attack that gets through
-belongs in [KNOWN_GAPS.md](KNOWN_GAPS.md) — those are more valuable than ones
+is the most valuable kind of contribution — more valuable than ones
 that are caught.
 
 ## License

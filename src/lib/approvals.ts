@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import type { Decision, PaymentRequest } from "./policy.js";
+import { withLock } from "./lock.js";
 
 /**
  * A payment the mandate would not allow outright but which the principal is
@@ -38,20 +39,22 @@ export function park(input: {
   decision: Decision;
   request: PaymentRequest;
 }): PendingApproval {
-  const entry: PendingApproval = {
-    id: randomUUID().slice(0, 8),
-    createdAt: new Date().toISOString(),
-    agent: input.agent,
-    mandateId: input.decision.mandateId,
-    request: input.request,
-    violations: input.decision.violations,
-    status: "PENDING",
-    decidedAt: null,
-    paypalOrderId: null,
-    approveUrl: null,
-  };
-  writeAll([...readAll(), entry]);
-  return entry;
+  return withLock("approvals", () => {
+    const entry: PendingApproval = {
+      id: randomUUID().slice(0, 8),
+      createdAt: new Date().toISOString(),
+      agent: input.agent,
+      mandateId: input.decision.mandateId,
+      request: input.request,
+      violations: input.decision.violations,
+      status: "PENDING",
+      decidedAt: null,
+      paypalOrderId: null,
+      approveUrl: null,
+    };
+    writeAll([...readAll(), entry]);
+    return entry;
+  });
 }
 
 export function list(): PendingApproval[] {
@@ -63,12 +66,14 @@ export function get(id: string): PendingApproval | undefined {
 }
 
 export function markCaptured(id: string): PendingApproval | undefined {
-  const all = readAll();
-  const entry = all.find((a) => a.id === id);
-  if (!entry || entry.status !== "APPROVED") return undefined;
-  entry.status = "CAPTURED";
-  writeAll(all);
-  return entry;
+  return withLock("approvals", () => {
+    const all = readAll();
+    const entry = all.find((a) => a.id === id);
+    if (!entry || entry.status !== "APPROVED") return undefined;
+    entry.status = "CAPTURED";
+    writeAll(all);
+    return entry;
+  });
 }
 
 export function decide(
@@ -76,16 +81,18 @@ export function decide(
   status: "APPROVED" | "REJECTED",
   order?: { id: string; approveUrl: string | null },
 ): PendingApproval | undefined {
-  const all = readAll();
-  const entry = all.find((a) => a.id === id);
-  if (!entry || entry.status !== "PENDING") return undefined;
+  return withLock("approvals", () => {
+    const all = readAll();
+    const entry = all.find((a) => a.id === id);
+    if (!entry || entry.status !== "PENDING") return undefined;
 
-  entry.status = status;
-  entry.decidedAt = new Date().toISOString();
-  if (order) {
-    entry.paypalOrderId = order.id;
-    entry.approveUrl = order.approveUrl;
-  }
-  writeAll(all);
-  return entry;
+    entry.status = status;
+    entry.decidedAt = new Date().toISOString();
+    if (order) {
+      entry.paypalOrderId = order.id;
+      entry.approveUrl = order.approveUrl;
+    }
+    writeAll(all);
+    return entry;
+  });
 }

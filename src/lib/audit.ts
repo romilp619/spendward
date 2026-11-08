@@ -1,6 +1,7 @@
 import { appendFileSync, readFileSync, existsSync } from "node:fs";
 import { createHash, createHmac } from "node:crypto";
 import type { BudgetPeriod } from "./mandate.js";
+import { withLock } from "./lock.js";
 import type { Decision, PaymentRequest } from "./policy.js";
 
 export interface AuditEntry {
@@ -73,34 +74,38 @@ export function record(input: {
   error?: string | null;
   payeeAccount?: string | null;
 }): AuditEntry {
-  const existing = readAll();
-  const prev = existing[existing.length - 1];
+  // Read the chain head and append under one lock: the MCP server and the
+  // dashboard both write here, and two appends from the same head would fork it.
+  return withLock("audit", () => {
+    const existing = readAll();
+    const prev = existing[existing.length - 1];
 
-  const body: Omit<AuditEntry, "hash"> = {
-    seq: existing.length + 1,
-    at: new Date().toISOString(),
-    agent: input.agent,
-    mandateId: input.decision.mandateId,
-    tool: input.tool,
-    outcome: input.decision.outcome,
-    amount: input.request?.amount ?? null,
-    currency: input.request?.currency ?? null,
-    quantity: input.request?.quantity ?? null,
-    merchant: input.request?.merchant ?? null,
-    recipient: input.request?.recipient ?? null,
-    category: input.request?.category ?? null,
-    isSubscription: input.request?.isSubscription ?? null,
-    violations: input.decision.violations,
-    paypalOrderId: input.paypalOrderId,
-    sourceContext: input.request?.sourceContext ?? null,
-    payeeAccount: input.payeeAccount ?? null,
-    error: input.error ?? null,
-    prevHash: prev?.hash ?? GENESIS,
-  };
+    const body: Omit<AuditEntry, "hash"> = {
+      seq: existing.length + 1,
+      at: new Date().toISOString(),
+      agent: input.agent,
+      mandateId: input.decision.mandateId,
+      tool: input.tool,
+      outcome: input.decision.outcome,
+      amount: input.request?.amount ?? null,
+      currency: input.request?.currency ?? null,
+      quantity: input.request?.quantity ?? null,
+      merchant: input.request?.merchant ?? null,
+      recipient: input.request?.recipient ?? null,
+      category: input.request?.category ?? null,
+      isSubscription: input.request?.isSubscription ?? null,
+      violations: input.decision.violations,
+      paypalOrderId: input.paypalOrderId,
+      sourceContext: input.request?.sourceContext ?? null,
+      payeeAccount: input.payeeAccount ?? null,
+      error: input.error ?? null,
+      prevHash: prev?.hash ?? GENESIS,
+    };
 
-  const entry: AuditEntry = { ...body, hash: digest(body) };
-  appendFileSync(path(), JSON.stringify(entry) + "\n");
-  return entry;
+    const entry: AuditEntry = { ...body, hash: digest(body) };
+    appendFileSync(path(), JSON.stringify(entry) + "\n");
+    return entry;
+  });
 }
 
 export function entries(): AuditEntry[] {

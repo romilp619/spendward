@@ -25,6 +25,7 @@ import { active, ledgerFor } from "../lib/mandates.js";
 import { placeOrder, recordPayment } from "../lib/checkout.js";
 import { search } from "../demo/catalog.js";
 import { planted } from "../demo/planted.js";
+import { remember } from "../lib/listings.js";
 import * as channel3 from "../lib/channel3.js";
 
 // This process is the enforcement point. It verifies mandates; it must never
@@ -87,7 +88,7 @@ async function guarded<T>(
     isSubscription: false,
   };
 
-  const decision = evaluate(mandate, probe, ledgerFor(mandate, request?.tool === "create_order" ? request.merchant : null));
+  const decision = evaluate(mandate, probe, ledgerFor(mandate, request));
 
   if (decision.outcome !== "ALLOW") {
     record({ agent, tool, decision, request, paypalOrderId: null });
@@ -145,6 +146,8 @@ server.registerTool(
       : search(args.query);
     // Demo only: a planted listing, standing in for a compromised seller page.
     const results = [...planted(args.query), ...found];
+    // What the agent is shown is what an order will be held to.
+    remember(results);
     return {
       content: [
         {
@@ -180,6 +183,10 @@ server.registerTool(
       items: z
         .array(
           z.object({
+            productId: z
+              .string()
+              .optional()
+              .describe("The id of the listing this item comes from, copied exactly from search_products."),
             name: z.string().describe("The name of the item."),
             quantity: z.number().describe("The item quantity. Must be a whole number."),
             unitAmount: z.number().describe("The price per unit."),
@@ -226,6 +233,7 @@ server.registerTool(
       category: args.category,
       recipient: args.payee,
       isSubscription: args.isSubscription ?? false,
+      items: args.items.map((i) => ({ productId: i.productId, name: i.name, quantity: i.quantity, unitAmount: i.unitAmount })),
       ...(args.sourceContext !== undefined ? { sourceContext: args.sourceContext } : {}),
     };
 

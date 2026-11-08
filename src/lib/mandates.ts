@@ -3,7 +3,8 @@ import { join } from "node:path";
 import type { SignedMandate } from "./mandate.js";
 import { spentUnder } from "./audit.js";
 import { revokedAt } from "./revocations.js";
-import type { LedgerState } from "./policy.js";
+import type { LedgerState, PaymentRequest } from "./policy.js";
+import { lookup } from "./listings.js";
 import { resolvePayee } from "./merchants.js";
 
 /**
@@ -73,11 +74,15 @@ export function activate(id: string): SignedMandate {
  * so the agent's path and the approval path cannot disagree about what has
  * been spent or where money would go.
  */
-export function ledgerFor(signed: SignedMandate, merchant: string | null): LedgerState {
+export function ledgerFor(signed: SignedMandate, request: PaymentRequest | null): LedgerState {
   const m = signed.mandate;
+  const buying = request?.tool === "create_order";
   return {
     spent: spentUnder(m.id, Date.now(), m.budgetPeriod),
     revokedAt: revokedAt(m.id),
-    ...(merchant !== null ? { payeeAccount: resolvePayee(m, merchant)?.account ?? null } : {}),
+    ...(buying ? {
+      payeeAccount: resolvePayee(m, request.merchant)?.account ?? null,
+      listings: lookup((request.items ?? []).map((i) => i.productId).filter((x): x is string => Boolean(x))),
+    } : {}),
   };
 }

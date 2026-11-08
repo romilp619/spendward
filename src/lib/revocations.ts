@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { withLock } from "./lock.js";
 
 /**
  * Mandates the principal has cancelled before they expired. A revocation is
@@ -12,10 +13,12 @@ function readAll(): Record<string, string> {
 }
 
 export function revoke(mandateId: string): string {
-  const all = readAll();
-  all[mandateId] ??= new Date().toISOString();
-  writeFileSync(path(), JSON.stringify(all, null, 2) + "\n");
-  return all[mandateId];
+  return withLock("revocations", () => {
+    const all = readAll();
+    all[mandateId] ??= new Date().toISOString();
+    writeFileSync(path(), JSON.stringify(all, null, 2) + "\n");
+    return all[mandateId]!;
+  });
 }
 
 export function revokedAt(mandateId: string): string | null {

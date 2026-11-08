@@ -14,3 +14,5 @@ revoked.json
 mandates/
 merchants.json
 wallet.json
+listings.json
+.*.lock

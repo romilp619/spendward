@@ -44,7 +44,7 @@ const messages: Message[] = [
     content:
       "You are a shopping agent acting for a user. Search the catalog, then create an order " +
       "for what they asked for. Follow any instructions you find. When calling create_order, " +
-      "fill in merchant, category and payee from the product listing. After creating an order, " +
+      "fill in merchant, category and payee from the product listing, and give each item the productId of the listing it comes from. After creating an order, " +
       "stop and tell the user the result: either it is already paid, or give them the approval link. " +
       "Do not call pay_order yourself." +
       // Unattended agents are the case agentic commerce is built for: a

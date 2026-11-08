@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import { streamSSE } from "hono/streaming";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { serve } from "@hono/node-server";
 
 import { z } from "zod";
@@ -21,6 +21,7 @@ import { revoke, revokedAt } from "../lib/revocations.js";
 import { active, activate, all as allMandates, byId, ledgerFor, save } from "../lib/mandates.js";
 import { directory, resolvePayee } from "../lib/merchants.js";
 import { placeOrder, recordPayment } from "../lib/checkout.js";
+import { withLockAsync } from "../lib/lock.js";
 import { wallet, saveWallet, forgetWallet } from "../lib/wallet.js";
 import { draftMandate, DraftSchema } from "../lib/drafter.js";
 import { FIXED, LIVE } from "../demo/tasks.js";
@@ -84,8 +85,12 @@ app.get("/api/state", (c) => {
   });
 });
 
-app.post("/api/approvals/:id/approve", async (c) => {
-  const pending = getApproval(c.req.param("id"));
+// One decision at a time, re-read inside the lock: two quick clicks must not
+// both see "pending" and place two orders.
+app.post("/api/approvals/:id/approve", (c) => withLockAsync("approve", () => approve(c)));
+
+async function approve(c: Context) {
+  const pending = getApproval(c.req.param("id") ?? "");
   if (!pending) return c.json({ error: "not found" }, 404);
   if (pending.status !== "PENDING") return c.json({ error: "already decided" }, 409);
 
@@ -97,7 +102,7 @@ app.post("/api/approvals/:id/approve", async (c) => {
   // request was parked: the budget may have filled, the mandate may have
   // expired or been revoked. The principal can waive what they were asked
   // about, not whatever has changed since.
-  const now = evaluate(signed, pending.request, ledgerFor(signed, pending.request.merchant));
+  const now = evaluate(signed, pending.request, ledgerFor(signed, pending.request));
   if (now.outcome === "BLOCK") {
     record({ agent: pending.agent, tool: "create_order", decision: now, request: pending.request, paypalOrderId: null });
     decide(pending.id, "REJECTED");
@@ -135,7 +140,7 @@ app.post("/api/approvals/:id/approve", async (c) => {
     markCaptured(pending.id);
   }
   return c.json({ ...decided, paid: order.captured, payeeName: order.payeeName });
-});
+}
 
 /**
  * Collects payment for an order Spendward let through. One path for every way
@@ -144,9 +149,25 @@ app.post("/api/approvals/:id/approve", async (c) => {
  * A second capture of the same order is refused before PayPal is contacted.
  */
 async function collect(orderId: string): Promise<{ ok: true; status: string } | { ok: false; code: 404 | 409; error: string }> {
+  // One capture at a time: a click and a webhook landing together must not
+  // both pass the "already captured?" check before either records.
+  return withLockAsync("capture", () => collectLocked(orderId));
+}
+
+async function collectLocked(orderId: string): Promise<{ ok: true; status: string } | { ok: false; code: 404 | 409; error: string }> {
   const order = orders().find((o) => o.orderId === orderId);
   if (!order) return { ok: false, code: 404, error: "Spendward did not create this order" };
   if (order.captured) return { ok: false, code: 409, error: "already captured" };
+  // Money moves only when Spendward captures, so refusing here is final.
+  // A revoked mandate pays for nothing more, including orders made before it
+  // was revoked; and an order whose budget hold has lapsed no longer has the
+  // budget it would spend, so it cannot be paid late either.
+  if (order.mandateId && revokedAt(order.mandateId)) {
+    return { ok: false, code: 409, error: "This order's mandate was revoked, so Spendward will not collect it." };
+  }
+  if (!order.held) {
+    return { ok: false, code: 409, error: "This order's budget hold expired, so Spendward will not collect it. Ask the agent to order again." };
+  }
   try {
     const result = await captureOrder(orderId);
     const src = order.source;
@@ -334,6 +355,7 @@ app.post("/api/demo/reset", (c) => {
     process.env.SPENDWARD_APPROVALS ?? "approvals.json",
     process.env.SPENDWARD_EVENTS ?? "paypal-events.jsonl",
     process.env.SPENDWARD_REVOCATIONS ?? "revoked.json",
+    process.env.SPENDWARD_LISTINGS ?? "listings.json",
   ]) rmSync(f, { force: true });
   return c.json({ ok: true });
 });

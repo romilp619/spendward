@@ -112,6 +112,6 @@ const gaps = [...results].flatMap(([m, row]) =>
   ATTACKS.filter((a) => row.get(a.id) === "GOT THROUGH").map((a) => `${m}  ${a.id}  ${a.technique}`),
 );
 if (gaps.length) {
-  console.log("\nGot through -- these belong in KNOWN_GAPS.md:");
+  console.log("\nGot through -- fix these first:");
   for (const g of gaps) console.log(`  ${g}`);
 }

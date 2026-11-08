@@ -1,5 +1,15 @@
 import type { Mandate, SignedMandate } from "./mandate.js";
 import { enforcementKey, verifyMandate } from "./mandate.js";
+import type { Listing } from "./listings.js";
+
+/** One line of an order, as the agent described it. */
+export interface OrderItem {
+  /** The listing this item came from, as returned by search_products. */
+  productId?: string | undefined;
+  name: string;
+  quantity: number;
+  unitAmount: number;
+}
 
 export type Outcome = "ALLOW" | "REQUIRE_APPROVAL" | "BLOCK";
 export type Severity = "CRITICAL" | "HIGH" | "MEDIUM";
@@ -17,6 +27,8 @@ export interface PaymentRequest {
   isSubscription: boolean;
   /** Where the agent got this instruction. Recorded for the audit trail. */
   sourceContext?: string;
+  /** The order's lines, each naming the listing it came from. */
+  items?: OrderItem[];
 }
 
 export interface Violation {
@@ -49,6 +61,11 @@ export interface LedgerState {
    * where the money would go. Left undefined for calls that pay no one.
    */
   payeeAccount?: string | null;
+  /**
+   * The listings the request's items name, as Spendward recorded them when it
+   * showed them to the agent. Undefined for calls that buy nothing.
+   */
+  listings?: Record<string, Listing | null>;
 }
 
 /**
@@ -68,6 +85,23 @@ export function categoryAllowed(allowed: string[], category: string): boolean {
     }
     return false;
   });
+}
+
+/** Every way an order departs from the listings its items name. Empty when it matches. */
+export function listingProblems(request: PaymentRequest, listings: Record<string, Listing | null>): string[] {
+  const items = request.items ?? [];
+  if (items.length === 0) return ["the order lists no items"];
+  const out: string[] = [];
+  for (const it of items) {
+    const label = `"${it.name}"`;
+    if (!it.productId) { out.push(`${label} names no listing`); continue; }
+    const l = listings[it.productId];
+    if (!l) { out.push(`${label} names listing ${it.productId}, which Spendward never returned`); continue; }
+    if (l.merchant !== request.merchant) out.push(`${label} is sold by ${l.merchant}, not ${request.merchant}`);
+    if (Math.abs(l.unitAmount - it.unitAmount) > 0.005) out.push(`${label} is listed at ${l.unitAmount}, not ${it.unitAmount}`);
+    if (l.category !== request.category) out.push(`${label} is listed under ${l.category}, not ${request.category}`);
+  }
+  return out;
 }
 
 const PERIOD_WORD = { none: "", day: " today", week: " this week", month: " this month" } as const;
@@ -173,6 +207,26 @@ export function evaluate(
       evidence: "payment would be delivered to a party other than the merchant",
       escalatable: false,
     });
+  }
+
+  // The order must be what the agent was shown: every item names a listing
+  // Spendward returned, from the shop the order claims, at that listing's
+  // price, in its category. This is what stops an agent relabelling a
+  // stranger's product as an allowed shop's, inflating a price, or adding a
+  // line no listing offered. Not waivable: it is a false description, not a
+  // judgement call.
+  if (ledger.listings !== undefined) {
+    const problems = listingProblems(request, ledger.listings);
+    if (problems.length) {
+      v.push({
+        rule: "LISTING_MISMATCH",
+        severity: "CRITICAL",
+        policy: "every item matches a listing Spendward returned: same shop, price and category",
+        requested: problems.join("; "),
+        evidence: "the order does not match what the agent was shown",
+        escalatable: false,
+      });
+    }
   }
 
   if (!m.allowedMerchants.includes(request.merchant)) {
