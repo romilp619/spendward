@@ -10,10 +10,14 @@ cd "$(dirname "$0")/.."
 
 PORT="${PORT:-3000}"
 LOG="$(mktemp)"
+# An empty config of its own. Without it, cloudflared also reads
+# ~/.cloudflared/config.yml, which belongs to any named tunnel on this machine;
+# that file's catch-all rule then answers every request here with a 404.
+CONF="$(mktemp --suffix=.yml)"
 echo "starting tunnel on port $PORT..."
-npx cloudflared tunnel --url "http://localhost:$PORT" >"$LOG" 2>&1 &
+npx cloudflared tunnel --config "$CONF" --url "http://localhost:$PORT" >"$LOG" 2>&1 &
 TUNNEL_PID=$!
-trap 'kill $TUNNEL_PID 2>/dev/null || true' EXIT
+trap 'kill $TUNNEL_PID 2>/dev/null || true; rm -f "$CONF"' EXIT
 
 for _ in $(seq 1 40); do
   URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$LOG" | head -1 || true)

@@ -557,17 +557,21 @@ console.log(`Spendward dashboard on http://localhost:${port}`);
 void (async () => {
   const url = process.env.PUBLIC_URL;
   if (!url || url.includes("localhost")) return;
-  try {
-    const res = await fetch(`${url}/api/state`, { signal: AbortSignal.timeout(8000) });
-    console.log(
-      res.ok
-        ? `PUBLIC_URL ${url} is reachable`
-        : `WARNING: PUBLIC_URL ${url} answered ${res.status}. Buyers will be redirected there after paying.`,
-    );
-  } catch {
-    console.log(
-      `WARNING: PUBLIC_URL ${url} is unreachable. Buyers will be stranded there after paying.\n` +
-        `         Start a tunnel with 'npm run tunnel', or set PUBLIC_URL=http://localhost:${port}.`,
-    );
+  // A new tunnel hostname takes a few seconds to go live, so try for about
+  // half a minute before calling it unreachable.
+  let last = "unreachable";
+  for (let i = 0; i < 7; i++) {
+    try {
+      const res = await fetch(`${url}/healthz`, { signal: AbortSignal.timeout(8000) });
+      if (res.ok) { console.log(`PUBLIC_URL ${url} is reachable`); return; }
+      last = `answered ${res.status}`;
+    } catch {
+      last = "unreachable";
+    }
+    await new Promise((r) => setTimeout(r, 5000));
   }
+  console.log(
+    `WARNING: PUBLIC_URL ${url} is ${last}. Buyers will be redirected there after paying.\n` +
+      `         Start a tunnel with 'npm run tunnel', or set PUBLIC_URL=http://localhost:${port}.`,
+  );
 })();
