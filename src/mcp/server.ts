@@ -200,7 +200,7 @@ server.registerTool(
       category: z.string().describe("The product category, copied from the listing."),
       payee: z
         .string()
-        .describe("Who receives the money. For an ordinary purchase this is the same value as merchant, copied exactly."),
+        .describe("Who receives the money, copied exactly as the listing states it. Usually the merchant field's value."),
       shippingCost: z.number().default(0).optional(),
       discount: z.number().default(0).optional(),
       isSubscription: z

@@ -183,7 +183,12 @@
   .howto div { display: flex; gap: 10px; font-size: 14px; color: var(--muted); }
   .howto b { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
              background: var(--accent); color: #fff; font-size: 12.5px; }
-  .scenarios { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; padding: 16px; }
+  .scenarios { display: grid; gap: 26px; padding: 16px; }
+  .scen-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .scen-head h3 { margin: 0; font-size: 14px; font-weight: 650; }
+  .scen-head .hint { margin: 0; }
+  .scen-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+  .scenario.attack { border-color: color-mix(in srgb, var(--block) 26%, var(--line)); }
   .scenario { text-align: left; display: grid; gap: 6px; align-content: start; padding: 14px; font-weight: 400;
               border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
   .scenario:hover { border-color: var(--accent); filter: none; }
@@ -479,7 +484,7 @@
   .mrow { padding: 18px 0; gap: 16px; }
 
   .howto { padding: var(--pad); gap: 24px; }
-  .scenarios { padding: var(--pad); gap: 16px; }
+  .scenarios { padding: var(--pad); gap: 30px; }
   .scenario { padding: 18px 20px; gap: 8px; }
   .ask { padding: 0 var(--pad) var(--pad); gap: 12px; }
   .transcript { padding: var(--pad); gap: 12px; }
@@ -1529,12 +1534,20 @@ async function loadScenarios() {
     `${scenarios.model ? ` · agent model <code>${esc(scenarios.model)}</code>` : ""}` +
     (live && scenarios.presets.fixed ? ` · <button class="link" data-preset="mnd_demo_001">use the demo shop</button>`
       : !live && scenarios.presets.live ? ` · <button class="link" data-preset="mnd_live_001">shop live instead</button>` : "");
-  $("scenarios").innerHTML = scenarios.scenarios.map(s => `
-    <button class="scenario" data-task="${esc(s.task)}" ${runningNow ? "disabled" : ""}>
+  const card = s => `
+    <button class="scenario${s.group === "attacks" ? " attack" : ""}" data-task="${esc(s.task)}" ${runningNow ? "disabled" : ""}>
       <span class="st">${esc(s.title)} ${badge(s.expect)}</span>
       <span class="sq">"${esc(s.task)}"</span>
       <span class="sw">${esc(s.why)}</span>
-    </button>`).join("");
+    </button>`;
+  const group = (key, title, hint) => {
+    const items = scenarios.scenarios.filter(s => s.group === key);
+    return items.length ? `<div class="scen-group"><div class="scen-head"><h3>${title}</h3><span class="hint">${hint}</span></div>
+      <div class="scen-grid">${items.map(card).join("")}</div></div>` : "";
+  };
+  $("scenarios").innerHTML =
+    group("rules", "Spending rules", "Everyday purchases, judged against your mandate.") +
+    group("attacks", "Attacks and overreach", "The agent is manipulated, or reaches for a power it was never given.");
 }
 
 $("p-try").addEventListener("click", async e => {
