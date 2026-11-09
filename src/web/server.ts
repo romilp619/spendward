@@ -3,6 +3,7 @@
  * Run with: npm run web
  */
 import { readFileSync, rmSync } from "node:fs";
+import { dataPath } from "../lib/data.js";
 import { spawn } from "node:child_process";
 import { streamSSE } from "hono/streaming";
 import { fileURLToPath } from "node:url";
@@ -34,7 +35,7 @@ const here = dirname(fileURLToPath(import.meta.url));
  * port, or behind a tunnel, would otherwise strand the buyer on a dead URL.
  */
 function publicOrigin(requestUrl: string): string {
-  return process.env.PUBLIC_URL ?? new URL(requestUrl).origin;
+  return process.env.PUBLIC_URL ?? process.env.RENDER_EXTERNAL_URL ?? new URL(requestUrl).origin;
 }
 const app = new Hono();
 
@@ -351,11 +352,11 @@ app.get("/api/agent/run", (c) => {
 app.post("/api/demo/reset", (c) => {
   if (running) return c.json({ error: "Wait for the agent to finish first." }, 409);
   for (const f of [
-    process.env.SPENDWARD_AUDIT_LOG ?? "audit.jsonl",
-    process.env.SPENDWARD_APPROVALS ?? "approvals.json",
-    process.env.SPENDWARD_EVENTS ?? "paypal-events.jsonl",
-    process.env.SPENDWARD_REVOCATIONS ?? "revoked.json",
-    process.env.SPENDWARD_LISTINGS ?? "listings.json",
+    process.env.SPENDWARD_AUDIT_LOG ?? dataPath("audit.jsonl"),
+    process.env.SPENDWARD_APPROVALS ?? dataPath("approvals.json"),
+    process.env.SPENDWARD_EVENTS ?? dataPath("paypal-events.jsonl"),
+    process.env.SPENDWARD_REVOCATIONS ?? dataPath("revoked.json"),
+    process.env.SPENDWARD_LISTINGS ?? dataPath("listings.json"),
   ]) rmSync(f, { force: true });
   return c.json({ ok: true });
 });
@@ -555,7 +556,7 @@ console.log(`Spendward dashboard on http://localhost:${port}`);
  * so say it at startup rather than at checkout.
  */
 void (async () => {
-  const url = process.env.PUBLIC_URL;
+  const url = process.env.PUBLIC_URL ?? process.env.RENDER_EXTERNAL_URL;
   if (!url || url.includes("localhost")) return;
   // A new tunnel hostname takes a few seconds to go live, so try for about
   // half a minute before calling it unreachable.

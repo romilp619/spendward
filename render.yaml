@@ -2,14 +2,24 @@ services:
   - type: web
     name: spendward
     runtime: node
-    plan: starter          # free spins down after 15 min idle; a judge would meet a cold start
+    plan: starter          # always on; the free plan sleeps and a judge would meet a cold start
     buildCommand: npm install
     startCommand: npm start
-    healthCheckPath: /api/state
+    healthCheckPath: /healthz
+    # State (audit log, mandates, wallet, approvals) lives on a persistent
+    # disk. Without one, every deploy or restart would wipe it.
+    disk:
+      name: spendward-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: SPENDWARD_DATA_DIR
+        value: /var/data
       - key: PAYPAL_API_BASE
         value: https://api-m.sandbox.paypal.com
-      # Set in the Render dashboard, not here -- these are secrets.
+      # Secrets: paste these from `npm run render:env` in the Render dashboard.
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET
@@ -30,9 +40,5 @@ services:
         sync: false
       - key: CHANNEL3_API_KEY
         sync: false
-      # Render's own URL for this service, so PayPal returns buyers here.
-      - key: PUBLIC_URL
-        fromService:
-          type: web
-          name: spendward
-          property: host
+      - key: MERCHANTS_JSON
+        sync: false

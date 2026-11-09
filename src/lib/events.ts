@@ -1,4 +1,5 @@
 import { appendFileSync, readFileSync, existsSync } from "node:fs";
+import { dataPath } from "./data.js";
 
 /**
  * A webhook PayPal sent us. Kept separately from the audit log: the audit log
@@ -15,7 +16,7 @@ export interface PayPalEvent {
   summary: string | null;
 }
 
-const path = () => process.env.SPENDWARD_EVENTS ?? "paypal-events.jsonl";
+const path = () => process.env.SPENDWARD_EVENTS ?? dataPath("paypal-events.jsonl");
 
 export function recordEvent(event: PayPalEvent): void {
   appendFileSync(path(), JSON.stringify(event) + "\n");

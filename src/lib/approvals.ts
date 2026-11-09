@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { dataPath } from "./data.js";
 import { randomUUID } from "node:crypto";
 import type { Decision, PaymentRequest } from "./policy.js";
 import { withLock } from "./lock.js";
@@ -22,7 +23,7 @@ export interface PendingApproval {
   approveUrl: string | null;
 }
 
-const path = () => process.env.SPENDWARD_APPROVALS ?? "approvals.json";
+const path = () => process.env.SPENDWARD_APPROVALS ?? dataPath("approvals.json");
 
 function readAll(): PendingApproval[] {
   const p = path();

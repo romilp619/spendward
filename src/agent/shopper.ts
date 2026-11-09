@@ -9,6 +9,7 @@
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { existsSync } from "node:fs";
 import { chat, type Message } from "../lib/llm.js";
 
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
@@ -25,7 +26,9 @@ const task = process.argv.slice(2).join(" ") || "Buy me the Bose headphones from
 
 const transport = new StdioClientTransport({
   command: "npx",
-  args: ["tsx", "--env-file=.env", "src/mcp/server.ts"],
+  // Settings come from .env locally and from the host's environment in
+  // deployment, where there is no file to load.
+  args: ["tsx", ...(existsSync(".env") ? ["--env-file=.env"] : []), "src/mcp/server.ts"],
   // The agent's side never holds the principal's signing key.
   env: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => v !== undefined && k !== "MANDATE_PRIVATE_KEY")) as Record<string, string>,
 });

@@ -40,7 +40,7 @@ function current(): SignedMandate {
   return m;
 }
 
-const origin = () => process.env.PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+const origin = () => process.env.PUBLIC_URL ?? process.env.RENDER_EXTERNAL_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
 
 /** What the agent is told when Spendward refuses. Structured so the model can
  *  explain the refusal to its user rather than silently retrying. */

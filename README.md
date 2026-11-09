@@ -397,6 +397,29 @@ With `PAYPAL_WEBHOOK_ID` set, each event is checked against PayPal's
 are accepted but flagged, because an unverified webhook is an unauthenticated
 POST from anyone.
 
+### Deploy on Render
+
+`render.yaml` describes the whole service: an always-on web service with a
+1 GB persistent disk at `/var/data` for the audit log, mandates, approvals and
+saved wallet. On first start, `npm start` creates the merchant directory and
+signs the demo mandates on the empty disk.
+
+```bash
+npm run render:env        # writes render.env: the settings to paste into Render
+```
+
+1. In Render: **New -> Blueprint**, pick this repository. It reads `render.yaml`.
+2. When it asks for the secret settings, use **Add from .env** and paste the
+   contents of `render.env`.
+3. After the first deploy, point PayPal's webhook at the new address:
+
+```bash
+npm run webhook -- https://your-service.onrender.com
+```
+
+Render's own address is used for PayPal's return links automatically. No
+domain is needed.
+
 ### Use it with Claude Desktop or any MCP client
 
 ```json

@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { dataPath } from "./data.js";
 import type { Mandate } from "./mandate.js";
 
 /**
@@ -21,7 +22,7 @@ export interface MerchantEntry {
   payee: string;
 }
 
-const path = () => process.env.SPENDWARD_MERCHANTS ?? "merchants.json";
+const path = () => process.env.SPENDWARD_MERCHANTS ?? dataPath("merchants.json");
 
 export function directory(): Record<string, MerchantEntry> {
   if (!existsSync(path())) return {};

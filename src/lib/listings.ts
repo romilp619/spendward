@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dataPath } from "./data.js";
 import type { Product } from "../demo/catalog.js";
 import { withLock } from "./lock.js";
 
@@ -20,7 +21,7 @@ export interface Listing {
   seenAt: string;
 }
 
-const path = () => process.env.SPENDWARD_LISTINGS ?? "listings.json";
+const path = () => process.env.SPENDWARD_LISTINGS ?? dataPath("listings.json");
 
 function readAll(): Record<string, Listing> {
   if (!existsSync(path())) return {};

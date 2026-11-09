@@ -5,10 +5,13 @@
  */
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { existsSync } from "node:fs";
 
 const transport = new StdioClientTransport({
   command: "npx",
-  args: ["tsx", "--env-file=.env", "src/mcp/server.ts"],
+  // Settings come from .env locally and from the host's environment in
+  // deployment, where there is no file to load.
+  args: ["tsx", ...(existsSync(".env") ? ["--env-file=.env"] : []), "src/mcp/server.ts"],
   env: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => v !== undefined && k !== "MANDATE_PRIVATE_KEY")) as Record<string, string>,
 });
 

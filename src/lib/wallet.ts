@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dataPath } from "./data.js";
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 
 /**
@@ -16,7 +17,7 @@ export interface Wallet {
   connectedAt: string;
 }
 
-const path = () => process.env.SPENDWARD_WALLET ?? "wallet.json";
+const path = () => process.env.SPENDWARD_WALLET ?? dataPath("wallet.json");
 
 function key(): Buffer {
   const secret = process.env.AUDIT_KEY;

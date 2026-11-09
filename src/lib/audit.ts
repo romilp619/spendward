@@ -1,4 +1,5 @@
 import { appendFileSync, readFileSync, existsSync } from "node:fs";
+import { dataPath } from "./data.js";
 import { createHash, createHmac } from "node:crypto";
 import type { BudgetPeriod } from "./mandate.js";
 import { withLock } from "./lock.js";
@@ -37,7 +38,7 @@ export interface AuditEntry {
 }
 
 const GENESIS = "0".repeat(64);
-const path = () => process.env.SPENDWARD_AUDIT_LOG ?? "audit.jsonl";
+const path = () => process.env.SPENDWARD_AUDIT_LOG ?? dataPath("audit.jsonl");
 
 /**
  * With AUDIT_KEY set each link is an HMAC, so someone who can edit the file

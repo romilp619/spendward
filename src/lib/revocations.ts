@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dataPath } from "./data.js";
 import { withLock } from "./lock.js";
 
 /**
@@ -6,7 +7,7 @@ import { withLock } from "./lock.js";
  * final: to give the agent spending power again, mint a new mandate. Kept as
  * a list of ids so a revoked mandate is refused even if its file is reused.
  */
-const path = () => process.env.SPENDWARD_REVOCATIONS ?? "revoked.json";
+const path = () => process.env.SPENDWARD_REVOCATIONS ?? dataPath("revoked.json");
 
 function readAll(): Record<string, string> {
   return existsSync(path()) ? (JSON.parse(readFileSync(path(), "utf8")) as Record<string, string>) : {};

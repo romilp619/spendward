@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { dataPath } from "./data.js";
 import { join } from "node:path";
 import type { SignedMandate } from "./mandate.js";
 import { spentUnder } from "./audit.js";
@@ -14,7 +15,7 @@ import { resolvePayee } from "./merchants.js";
  * once at startup, so a mandate the principal signs or switches to in the
  * dashboard governs the very next request, without restarting the agent.
  */
-const dir = () => process.env.SPENDWARD_MANDATES ?? "mandates";
+const dir = () => process.env.SPENDWARD_MANDATES ?? dataPath("mandates");
 const activeFile = () => join(dir(), "active.json");
 const safe = (id: string) => /^[A-Za-z0-9_-]{1,64}$/.test(id);
 

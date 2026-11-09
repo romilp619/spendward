@@ -10,7 +10,7 @@ const STALE_MS = 10_000;
 const sleep = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
 export function withLock<T>(name: string, fn: () => T): T {
-  const file = `${process.env.SPENDWARD_LOCK_DIR ?? "."}/.${name}.lock`;
+  const file = `${process.env.SPENDWARD_LOCK_DIR ?? process.env.SPENDWARD_DATA_DIR ?? "."}/.${name}.lock`;
   const deadline = Date.now() + 15_000;
   for (;;) {
     try {
@@ -33,7 +33,7 @@ export function withLock<T>(name: string, fn: () => T): T {
 
 /** The async form, for work that awaits (a PayPal call) inside the critical section. */
 export async function withLockAsync<T>(name: string, fn: () => Promise<T>): Promise<T> {
-  const file = `${process.env.SPENDWARD_LOCK_DIR ?? "."}/.${name}.lock`;
+  const file = `${process.env.SPENDWARD_LOCK_DIR ?? process.env.SPENDWARD_DATA_DIR ?? "."}/.${name}.lock`;
   const deadline = Date.now() + 120_000;
   for (;;) {
     try {

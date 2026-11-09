@@ -16,3 +16,4 @@ merchants.json
 wallet.json
 listings.json
 .*.lock
+render.env

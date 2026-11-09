@@ -25,7 +25,9 @@
     "web:live": "npm run web",
     "redteam": "tsx --env-file=.env redteam/run.ts",
     "audit:verify": "tsx --env-file=.env src/cli/verify-audit.ts",
-    "start": "tsx src/web/server.ts"
+    "start": "tsx src/cli/bootstrap.ts && tsx src/web/server.ts",
+    "render:env": "./scripts/render-env.sh",
+    "webhook": "./scripts/set-webhook.sh"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

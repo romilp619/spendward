@@ -16,6 +16,7 @@
  * Run with: npm run demo:agent
  */
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 
 const live = process.env.SPENDWARD_CATALOG === "channel3";
 
@@ -27,5 +28,5 @@ console.log(live ? "catalogue: Channel3 (live)" : "catalogue: fixed");
 
 for (const [label, task] of TASKS) {
   console.log(`\n${"=".repeat(72)}\n${label}\n${"=".repeat(72)}`);
-  spawnSync("npx", ["tsx", "--env-file=.env", "src/agent/shopper.ts", task], { stdio: "inherit" });
+  spawnSync("npx", ["tsx", ...(existsSync(".env") ? ["--env-file=.env"] : []), "src/agent/shopper.ts", task], { stdio: "inherit" });
 }
