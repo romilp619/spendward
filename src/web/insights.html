@@ -186,7 +186,32 @@ function studioTheme() {
   });
 }
 
-let studio = null, key = null, asking = false;
+let studio = null, building = null, key = null, asking = false;
+
+async function build() {
+  const { openaiAdapter } = await import("/insights/ai-adapter.js");
+  studio = agStudio.createStudio(document.getElementById("studio"), {
+    theme: studioTheme(),
+    loadThemeGoogleFonts: false,
+    layout: { rowHeight: 40, widgetPadding: 16 },
+    mode: "view",
+    // Asking shows the report and the assistant side by side; the assistant
+    // builds or changes widgets itself when asked.
+    panels: { edit: { right: ["ai"] }, view: {} },
+    data: insightsData(),
+    initialState: INSIGHTS_REPORT,
+    // The model and its key live on the server; the page only names the route.
+    ai: ({ api }) => agStudio.createAiHarness(api, {
+      adapter: openaiAdapter({ endpoint: "/api/ai", model: "spendward" }),
+      promptStarters: [
+        { label: "Attacks caught", prompt: "Which prompt-injection attacks did Spendward stop, and what rule caught each one?" },
+        { label: "Where money went", prompt: "Which PayPal accounts received money, and how much each?" },
+        { label: "Why held", prompt: "Why were payments held for my approval?" },
+        { label: "Spend by shop", prompt: "Add a chart of the amount the agent asked to spend at each shop, split by outcome." },
+      ],
+    }),
+  }, { modules: [agStudio.AgStudioAiModule] });
+}
 
 window.insights = {
   /** Called by the dashboard with each fresh /api/state. */
@@ -194,33 +219,14 @@ window.insights = {
     // A copy made here, so every array the report holds belongs to this frame.
     state = JSON.parse(JSON.stringify(next));
     const k = (state.audit ?? []).length + ":" + (state.events ?? []).length;
-    if (studio) {
-      if (k !== key) { key = k; studio.updateProperties({ data: insightsData() }); }
-      return;
+    // Built once. The dashboard refreshes every few seconds; a refresh that
+    // lands while the first build is still loading waits for that build
+    // instead of starting a second report beneath it.
+    if (!studio) {
+      if (!building) { key = k; building = build(); }
+      await building;
     }
-    key = k;
-    const { openaiAdapter } = await import("/insights/ai-adapter.js");
-    studio = agStudio.createStudio(document.getElementById("studio"), {
-      theme: studioTheme(),
-      loadThemeGoogleFonts: false,
-      layout: { rowHeight: 40, widgetPadding: 16 },
-      mode: "view",
-      // Asking shows the report and the assistant side by side; the assistant
-      // builds or changes widgets itself when asked.
-      panels: { edit: { right: ["ai"] }, view: {} },
-      data: insightsData(),
-      initialState: INSIGHTS_REPORT,
-      // The model and its key live on the server; the page only names the route.
-      ai: ({ api }) => agStudio.createAiHarness(api, {
-        adapter: openaiAdapter({ endpoint: "/api/ai", model: "spendward" }),
-        promptStarters: [
-          { label: "Attacks caught", prompt: "Which prompt-injection attacks did Spendward stop, and what rule caught each one?" },
-          { label: "Where money went", prompt: "Which PayPal accounts received money, and how much each?" },
-          { label: "Why held", prompt: "Why were payments held for my approval?" },
-          { label: "Spend by shop", prompt: "Add a chart of the amount the agent asked to spend at each shop, split by outcome." },
-        ],
-      }),
-    }, { modules: [agStudio.AgStudioAiModule] });
+    if (k !== key) { key = k; studio.updateProperties({ data: insightsData() }); }
   },
   setTheme() { studio?.updateProperties({ theme: studioTheme() }); },
   /** The report opens read-only; asking switches to edit mode with the assistant. */
