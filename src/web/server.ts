@@ -296,7 +296,6 @@ app.get("/api/scenarios", (c) => {
     catalog,
     scenarios: catalog === "live" ? LIVE : FIXED,
     presets: { fixed: Boolean(byId("mnd_demo_001")), live: Boolean(byId("mnd_live_001")) && Boolean(process.env.CHANNEL3_API_KEY) },
-    model: process.env.LLM_MODEL ?? null,
     busy: running,
   });
 });

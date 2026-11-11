@@ -1530,10 +1530,11 @@ async function loadScenarios() {
   if (!r?.ok) return;
   scenarios = await r.json();
   const live = scenarios.catalog === "live";
-  $("try-catalog").innerHTML = `Shopping ${live ? "<b>live</b> at real retailers through Channel3" : "the <b>demo shop</b>, a fixed catalogue"}` +
-    `${scenarios.model ? ` · agent model <code>${esc(scenarios.model)}</code>` : ""}` +
-    (live && scenarios.presets.fixed ? ` · <button class="link" data-preset="mnd_demo_001">use the demo shop</button>`
-      : !live && scenarios.presets.live ? ` · <button class="link" data-preset="mnd_live_001">shop live instead</button>` : "");
+  $("try-catalog").innerHTML = (live
+      ? "<b>Live shopping:</b> real products and prices from real retailers (Best Buy, Macy's) through Channel3."
+      : "<b>Demo shop:</b> a small fixed catalogue of sample products, so every run behaves the same.") +
+    (live && scenarios.presets.fixed ? ` <button class="link" data-preset="mnd_demo_001">Switch to the demo shop</button>`
+      : !live && scenarios.presets.live ? ` <button class="link" data-preset="mnd_live_001">Switch to live shopping</button>` : "");
   const card = s => `
     <button class="scenario${s.group === "attacks" ? " attack" : ""}" data-task="${esc(s.task)}" ${runningNow ? "disabled" : ""}>
       <span class="st">${esc(s.title)} ${badge(s.expect)}</span>
