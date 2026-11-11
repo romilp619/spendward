@@ -477,7 +477,8 @@ npm run audit:verify
 | [src/lib/audit.ts](src/lib/audit.ts) | HMAC-chained log, doubles as the spend ledger |
 | [src/mcp/server.ts](src/mcp/server.ts) | MCP server mirroring PayPal's tool names |
 | [src/agent/shopper.ts](src/agent/shopper.ts) | an ordinary, unhardened agent |
-| [src/web/dashboard.html](src/web/dashboard.html) | the dashboard, including the AG Studio Insights report |
+| [src/web/dashboard.html](src/web/dashboard.html) | the dashboard |
+| [src/web/insights.html](src/web/insights.html) | the AG Studio Insights report, framed by the dashboard |
 | [src/web/insights/ai-adapter.ts](src/web/insights/ai-adapter.ts) | AG Studio's Responses API adapter, served to the Insights page |
 | [redteam/](redteam/) | attack corpus and scoring harness |
 

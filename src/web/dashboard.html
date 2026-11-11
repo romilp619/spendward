@@ -610,9 +610,9 @@
   }
 
   /* Insights: AG Studio fills the panel; it brings its own chrome. */
-  #studio { height: calc(100vh - 230px); min-height: 640px; border-radius: var(--radius);
+  #studio { display: block; width: 100%; height: calc(100vh - 230px); min-height: 640px; border-radius: var(--radius);
     overflow: hidden; border: 1px solid var(--line); background: var(--panel-solid); }
-  #studio:empty { display: none; }
+  #studio[hidden] { display: none; }
   .credit { margin: 10px 2px 0; text-align: right; font-size: 12px; color: var(--muted); }
   .credit a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
   .credit a:hover { color: var(--ink); }
@@ -753,7 +753,7 @@
     </div>
     <p class="empty" id="ins-empty" hidden><span>Nothing to chart yet. Open <button class="link" data-goto="try">Try it</button> and run a scenario.</span></p>
     <p class="empty" id="ins-loading"><span>Loading the report…</span></p>
-    <div id="studio" aria-label="Spendward report"></div>
+    <iframe id="studio" title="Spendward report" hidden></iframe>
     <p class="credit" id="ins-credit" hidden>Report and assistant powered by <a href="https://www.ag-grid.com/studio/" target="_blank" rel="noopener">AG Studio</a> from AG Grid</p>
   </div>
 
@@ -888,8 +888,6 @@ const badge = o => o === "ALLOW" ? `<span class="badge allow">allowed</span>`
                : `<span class="badge approval">approval</span>`;
 
 let grid, state = { audit: [], approvals: [], mandate: null, chain: { valid: true } };
-// The Insights report (AG Studio), created the first time Insights opens.
-let studio = null, studioLoading = null, insightsKey = null;
 
 const columns = [
   { headerName: "Time", field: "at", width: 178, sort: "desc", valueFormatter: p => stamp(p.value), cellClass: "num" },
@@ -1257,7 +1255,7 @@ function syncTheme() {
   $("theme").innerHTML = isDark() ? SUN : MOON;
   $("theme").setAttribute("aria-label", isDark() ? "Switch to light" : "Switch to dark");
   grid?.setGridOption("theme", gridTheme());
-  studio?.updateProperties({ theme: studioTheme() });
+  frameApi()?.setTheme();
 }
 $("theme").addEventListener("click", () => {
   const next = isDark() ? "light" : "dark";
@@ -1570,214 +1568,37 @@ function paintChrome() {
 }
 
 // ---------------------------------------------------------------------------
-// Insights: the decision log as an AG Studio report, with an assistant that
-// can answer questions about it and build new widgets. Loaded on first visit,
-// so the rest of the dashboard never pays for it.
+// Insights: an AG Studio report over the decision log, with an assistant.
+// It lives in its own frame (/insights): AG Studio carries its own AG Grid
+// and CSS, which would otherwise restyle the Activity table. The frame is
+// created on first visit, so the rest of the dashboard never pays for it.
 // ---------------------------------------------------------------------------
-const AG_STUDIO = "https://cdn.jsdelivr.net/npm/ag-studio@3.0.0/dist/umd/ag-studio.min.js";
-
-const loadScript = src => new Promise((ok, fail) => {
-  const s = Object.assign(document.createElement("script"), { src, async: true });
-  s.onload = ok; s.onerror = () => fail(new Error(`could not load ${src}`));
-  document.head.append(s);
-});
-const OUTCOME = { ALLOW: "Allowed", REQUIRE_APPROVAL: "Held for you", BLOCK: "Blocked" };
-
-/** Four tables, built from the same state every other page reads. */
-function insightsData() {
-  const a = state.audit ?? [];
-  const shop = m => m ? (state.merchants ?? {})[m] ?? m : "—";
-  const day = t => stamp(t).slice(0, 10);
-  // The same definition of "a request" as Overview: a payment Spendward
-  // collected, or the record of you approving an order, is not a new request.
-  const requests = a.filter(e => e.tool !== "pay_order" && !(e.outcome === "ALLOW" && e.violations.length));
-  const approved = new Set(a.filter(e => e.outcome === "ALLOW" && e.violations.length && e.paypalOrderId).map(e => e.paypalOrderId));
-  const rank = { ALLOW: 0, REQUIRE_APPROVAL: 1, BLOCK: 2 };
-  // Sorted by outcome so the donut always lists Allowed, Held, Blocked in that
-  // order, matching the series order of the per-day chart.
-  const decisions = [...requests].sort((x, y) => (rank[x.outcome] ?? 3) - (rank[y.outcome] ?? 3) || x.seq - y.seq).map(e => ({
-    id: e.seq, time: e.at, day: day(e.at), action: ACTION[e.tool] ?? e.tool, shop: shop(e.merchant),
-    amount: e.amount, outcome: OUTCOME[e.outcome] ?? e.outcome,
-    allowed: e.outcome === "ALLOW" ? 1 : 0, held: e.outcome === "REQUIRE_APPROVAL" ? 1 : 0, blocked: e.outcome === "BLOCK" ? 1 : 0,
-    reached: e.tool === "create_order" && e.paypalOrderId && !e.error ? 1 : 0,
-    task: e.sourceContext ?? "",
-  }));
-  const rules = requests.flatMap(e => e.violations.map((v, i) => ({
-    id: `${e.seq}.${i}`, decision: e.seq, rule: v.rule, severity: v.severity,
-    outcome: OUTCOME[e.outcome] ?? e.outcome, policy: v.policy ?? "", requested: v.requested ?? "", evidence: v.evidence ?? "",
-  })));
-  const payments = a.filter(e => e.tool === "pay_order" && e.outcome === "ALLOW" && !e.error).map(e => ({
-    id: e.seq, time: e.at, day: day(e.at), shop: shop(e.merchant), payee: e.payeeAccount ?? "—",
-    amount: e.amount ?? 0, order: e.paypalOrderId ?? "", approved: approved.has(e.paypalOrderId) ? "Approved by you" : "Within the mandate",
-  }));
-  const confirmations = (state.events ?? []).map((e, i) => ({
-    id: i + 1, time: e.at, type: e.type, verified: e.verification, summary: e.summary ?? "",
-  }));
-  const f = (id, name, format, description) => ({ id, name, format, ...(description ? { description } : {}) });
-  return {
-    description: "Spendward sits between an AI shopping agent and PayPal. Every payment the agent attempts is checked against a mandate the user signed; the outcome is Allowed, Held for you (waits for the user's approval) or Blocked. Amounts are USD. When naming a rule such as MANDATE_MAX_AMOUNT, write it in backticks.",
-    sources: [
-      { id: "decisions", name: "Decisions", description: "One row per request the AI agent made to Spendward.", data: decisions, fields: [
-        f("id", "Decision", "integerFormat"), f("time", "Time", "dateTimeFormat"), f("day", "Day", "textFormat"),
-        f("action", "Action", "textFormat"), f("shop", "Shop", "textFormat"), f("amount", "Amount", "currencyFormat"),
-        f("outcome", "Outcome", "textFormat", "Allowed, Held for you, or Blocked"),
-        f("allowed", "Allowed", "integerFormat", "1 if allowed"), f("held", "Held", "integerFormat", "1 if held for the user's approval"),
-        f("blocked", "Blocked", "integerFormat", "1 if blocked"), f("reached", "Reached PayPal", "integerFormat", "1 if an order was created at PayPal"),
-        f("task", "Task", "textFormat", "What the agent said it was doing"),
-      ] },
-      { id: "rules", name: "Rules triggered", description: "One row per mandate rule a decision broke. Prompt-injection attacks show up as UNAUTHORIZED_RECIPIENT, LISTING_MISMATCH or SUBSCRIPTION_NOT_ALLOWED.", data: rules, fields: [
-        f("id", "Violation", "textFormat"), f("decision", "Decision", "integerFormat"), f("rule", "Rule", "textFormat"),
-        f("severity", "Severity", "textFormat"), f("outcome", "Outcome", "textFormat"), f("policy", "Policy", "textFormat"),
-        f("requested", "Requested", "textFormat"), f("evidence", "Evidence", "textFormat"),
-      ] },
-      { id: "payments", name: "Payments", description: "Money that actually moved through PayPal, and the account Spendward paid.", data: payments, fields: [
-        f("id", "Payment", "integerFormat"), f("time", "Time", "dateTimeFormat"), f("day", "Day", "textFormat"),
-        f("shop", "Shop", "textFormat"), f("payee", "Paid to (PayPal account)", "textFormat"), f("amount", "Amount", "currencyFormat"),
-        f("order", "PayPal order", "textFormat"), f("approved", "How", "textFormat"),
-      ] },
-      { id: "confirmations", name: "PayPal confirmations", description: "Webhooks PayPal sent, with their signature verification result.", data: confirmations, fields: [
-        f("id", "Confirmation", "integerFormat"), f("time", "Time", "dateTimeFormat"), f("type", "Event", "textFormat"),
-        f("verified", "Verification", "textFormat"), f("summary", "Summary", "textFormat"),
-      ] },
-    ],
-    relationships: [
-      { id: "rule-decision", type: "many-to-one", source: { tableId: "rules", fieldId: "decision" }, target: { tableId: "decisions", fieldId: "id" } },
-    ],
-  };
-}
-
-const kpi = (text, value) => ({ type: "value", format: { title: { enabled: true, text } }, dataMapping: { value: [value] } });
-const INSIGHTS_REPORT = {
-  selectedPageId: "overview",
-  pages: [{
-    id: "overview",
-    widgets: {
-      k1: kpi("Requests", { id: "decisions.id", aggregation: "countd" }),
-      k2: kpi("Allowed", { id: "decisions.allowed", aggregation: "sum" }),
-      k3: kpi("Held for you", { id: "decisions.held", aggregation: "sum" }),
-      k4: kpi("Blocked", { id: "decisions.blocked", aggregation: "sum" }),
-      k5: kpi("Paid via PayPal", { id: "payments.amount", aggregation: "sum" }),
-      k6: kpi("Rules triggered", { id: "rules.id", aggregation: "countd" }),
-      outcomes: { type: "donut-chart", format: { title: { enabled: true, text: "What Spendward decided" } },
-        dataMapping: { categoryKey: [{ id: "decisions.outcome" }], valueKey: [{ id: "decisions.id", aggregation: "countd" }] } },
-      perDay: { type: "column-chart-stacked", format: { title: { enabled: true, text: "Requests per day" },
-        style: { theme: { common: { legend: { enabled: true, position: "bottom" } } } } },
-        // One series per outcome, in a fixed order, so each keeps the colour it has in the donut.
-        dataMapping: { categoryKey: [{ id: "decisions.day" }], valueKey: [
-          { id: "decisions.allowed", aggregation: "sum" }, { id: "decisions.held", aggregation: "sum" }, { id: "decisions.blocked", aggregation: "sum" }] } },
-      rules: { type: "bar-chart-grouped", format: { title: { enabled: true, text: "Rules that stopped a payment" } },
-        dataMapping: { categoryKey: [{ id: "rules.rule" }], valueKey: [{ id: "rules.id", aggregation: "countd" }] } },
-      money: { type: "grid", format: { title: { enabled: true, text: "Where the money went" } },
-        dataMapping: { cols: [{ id: "payments.shop" }, { id: "payments.payee" }, { id: "payments.amount", aggregation: "sum" }] } },
-    },
-    widgetLayout: {
-      k1: { xTrack: 0, yTrack: 0, xSpan: 4, ySpan: 3 }, k2: { xTrack: 4, yTrack: 0, xSpan: 4, ySpan: 3 },
-      k3: { xTrack: 8, yTrack: 0, xSpan: 4, ySpan: 3 }, k4: { xTrack: 12, yTrack: 0, xSpan: 4, ySpan: 3 },
-      k5: { xTrack: 16, yTrack: 0, xSpan: 4, ySpan: 3 }, k6: { xTrack: 20, yTrack: 0, xSpan: 4, ySpan: 3 },
-      outcomes: { xTrack: 0, yTrack: 3, xSpan: 8, ySpan: 7 }, perDay: { xTrack: 8, yTrack: 3, xSpan: 16, ySpan: 7 },
-      rules: { xTrack: 0, yTrack: 10, xSpan: 12, ySpan: 7 }, money: { xTrack: 12, yTrack: 10, xSpan: 12, ySpan: 7 },
-    },
-  }],
-};
-
-function studioTheme() {
-  return agStudio.studioTheme.withParams({
-    browserColorScheme: isDark() ? "dark" : "light",
-    backgroundColor: css("--panel-solid"),
-    foregroundColor: css("--ink"),
-    textColor: css("--ink"),
-    subtleTextColor: css("--muted"),
-    borderColor: css("--line-strong"),
-    accentColor: css("--accent"),
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-    studioWrapperBackgroundColor: css("--panel-solid"),
-    studioWrapperBorder: false,
-    studioCanvasBackgroundColor: css("--panel-solid"),
-    studioCanvasBorder: false,
-    studioCanvasShadow: "none",
-    studioWidgetBackgroundColor: css("--bg"),
-    studioWidgetBorder: { color: css("--line") },
-    studioWidgetBorderRadius: 12,
-    studioWidgetTitleFontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-    studioWidgetTitleFontSize: 14,
-    studioWidgetTitleFontWeight: 600,
-    studioWidgetTitleTextColor: css("--muted"),
-    studioValueWidgetFontSize: 30,
-    // The dashboard's own accents, so the report reads as part of the product.
-    chartFontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
-    chartTextColor: css("--muted"),
-    chartGridLineColor: css("--line"),
-    chartAxisLineColor: css("--line-strong"),
-    chartPaletteFills1Color: css("--accent"),
-    chartPaletteFills2Color: css("--accent-2"),
-    chartPaletteFills3Color: css("--accent-3"),
-    chartPaletteStrokes1Color: css("--accent"),
-    chartPaletteStrokes2Color: css("--accent-2"),
-    chartPaletteStrokes3Color: css("--accent-3"),
-  });
-}
-
-async function openInsights() {
+const frameApi = () => $("studio").contentWindow?.insights;
+function openInsights() {
   const has = (state.audit ?? []).some(e => e.tool !== "pay_order");
   $("ins-empty").hidden = has;
   $("ins-ask").hidden = !has;
+  $("studio").hidden = !has;
   if (!has) { $("ins-loading").hidden = true; return; }
-  const key = (state.audit ?? []).length + ":" + (state.events ?? []).length;
-  if (studio) {
-    if (key !== insightsKey) { insightsKey = key; studio.updateProperties({ data: insightsData() }); }
-    return;
-  }
-  if (studioLoading) return studioLoading;
+  if (frameApi()) return frameApi().update(state).catch(insightsFailed);
+  if ($("studio").getAttribute("src")) return; // still loading
   $("ins-loading").hidden = false;
-  studioLoading = (async () => {
-    try {
-      await loadScript(AG_STUDIO);
-      const { openaiAdapter } = await import("/insights/ai-adapter.js");
-      insightsKey = key;
-      studio = agStudio.createStudio($("studio"), {
-        theme: studioTheme(),
-        loadThemeGoogleFonts: false,
-        layout: { rowHeight: 40, widgetPadding: 16 },
-        mode: "view",
-        // Asking shows the report and the assistant side by side; the assistant
-        // builds or changes widgets itself when asked.
-        panels: { edit: { right: ["ai"] }, view: {} },
-        data: insightsData(),
-        initialState: INSIGHTS_REPORT,
-        // The model and its key live on the server; the page only names the route.
-        ai: ({ api }) => agStudio.createAiHarness(api, {
-          adapter: openaiAdapter({ endpoint: "/api/ai", model: "spendward" }),
-          promptStarters: [
-            { label: "Attacks caught", prompt: "Which prompt-injection attacks did Spendward stop, and what rule caught each one?" },
-            { label: "Where money went", prompt: "Which PayPal accounts received money, and how much each?" },
-            { label: "Why held", prompt: "Why were payments held for my approval?" },
-            { label: "Spend by shop", prompt: "Add a chart of the amount the agent asked to spend at each shop, split by outcome." },
-          ],
-        }),
-      }, { modules: [agStudio.AgStudioAiModule] });
-      $("ins-credit").hidden = false;
-    } catch (err) {
-      $("ins-empty").hidden = false;
-      $("ins-empty").querySelector("span").textContent = "The report could not load. Check your connection and open Insights again.";
-      studio = null;
-      console.error(err);
-    } finally {
-      $("ins-loading").hidden = true;
-      studioLoading = null;
-    }
-  })();
-  return studioLoading;
+  addEventListener("insights-ready", () => {
+    frameApi().update(state).then(() => { $("ins-loading").hidden = true; $("ins-credit").hidden = false; }, insightsFailed);
+  }, { once: true });
+  $("studio").addEventListener("error", insightsFailed, { once: true });
+  $("studio").src = "/insights";
 }
-// The report opens as a clean read-only view. Asking switches it to edit mode,
-// where the assistant sits on the right and can add or change widgets.
-let asking = false;
+function insightsFailed(err) {
+  $("ins-loading").hidden = true;
+  $("ins-empty").hidden = false;
+  $("ins-empty").querySelector("span").textContent = "The report could not load. Check your connection and open Insights again.";
+  console.error(err);
+}
 $("ins-ask").addEventListener("click", () => {
-  if (!studio) return;
-  asking = !asking;
-  studio.updateProperties({ mode: asking ? "edit" : "view" });
-  $("ins-ask").lastChild.textContent = asking ? "Done" : "Ask Spendward";
+  const asking = frameApi()?.toggleAsk();
+  if (asking !== undefined) $("ins-ask").lastChild.textContent = asking ? "Done" : "Ask Spendward";
 });
-
 // ---------------------------------------------------------------------------
 // Try it: run the real agent from the browser and watch each step.
 // ---------------------------------------------------------------------------

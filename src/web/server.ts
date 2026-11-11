@@ -100,6 +100,8 @@ app.post("/api/ai/responses", async (c) => {
 });
 
 app.get("/", (c) => c.html(readFileSync(join(here, "dashboard.html"), "utf8")));
+// The Insights report, framed by the dashboard so AG Studio's styles stay inside it.
+app.get("/insights", (c) => c.html(readFileSync(join(here, "insights.html"), "utf8")));
 
 app.get("/api/state", (c) => {
   const m = active()?.mandate ?? null;
