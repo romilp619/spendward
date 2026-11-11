@@ -208,6 +208,9 @@
   .msg.res-approve { border-color: var(--approve); background: var(--approve-bg); }
   .msg details summary { cursor: pointer; color: var(--muted); }
   .msg.wait { color: var(--muted); font-size: 13px; }
+  .msg.next { white-space: normal; }
+  .next-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .next-actions { display: flex; gap: 8px; }
   .typing { display: inline-flex; gap: 4px; } .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
   @media (max-width: 760px) { .howto { grid-template-columns: 1fr; } }
   @media (max-width: 480px) { .tabs [role=tab] { padding: 10px 9px; font-size: 14px; } .tabs { gap: 0; } }
@@ -1590,6 +1593,27 @@ function typing(on) {
   if (on && !still()) gsap.to(".typing i", { y: -4, duration: 0.35, stagger: 0.12, repeat: -1, yoyo: true, ease: "sine.inOut" });
 }
 
+/** After a run: say what happened, and offer Overview without leaving on its own. */
+function offerOverview(outcome) {
+  const say = {
+    "res-allow": ["Allowed.", "The order reached PayPal. See it, and whether it was paid, in Overview."],
+    "res-approve": ["Waiting for you.", "Spendward held this one. Approve or reject it in Overview."],
+    "res-block": ["Refused.", "PayPal was never called. The decision is recorded in Overview and Activity."],
+  }[outcome] ?? ["Run finished.", "The agent placed no order. Overview shows everything decided so far."];
+  const box = Object.assign(document.createElement("div"), { className: `msg next ${outcome ?? ""}` });
+  box.innerHTML = `<span class="who">What next</span>
+    <div class="next-row"><span><b>${say[0]}</b> ${say[1]}</span>
+      <span class="next-actions">
+        <button class="${outcome === "res-approve" ? "primary" : ""}" data-goto="overview">Go to Overview</button>
+        <button class="ghost" data-dismiss="1">Stay here</button>
+      </span></div>`;
+  $("transcript").append(box);
+  box.querySelector("[data-dismiss]").addEventListener("click", () => box.remove());
+  if (!still()) gsap.from(box, { autoAlpha: 0, y: 10, duration: 0.35 });
+  box.scrollIntoView({ behavior: still() ? "auto" : "smooth", block: "nearest" });
+  box.querySelector("button").focus({ preventScroll: true });
+}
+
 function runAgent(task) {
   runningNow = true;
   document.querySelectorAll(".scenario, #ask-go").forEach(b => b.disabled = true);
@@ -1623,9 +1647,7 @@ function runAgent(task) {
     else if (e.type === "error") { addMsg("res-block", "Error", esc(e.text)); finish(); }
     else if (e.type === "end") {
       finish();
-      if (outcome === "res-approve") toast("Waiting for you in Overview.", "good");
-      else if (outcome === "res-block") toast("Spendward refused it. PayPal was never called.", "bad");
-      else if (outcome === "res-allow") toast("Allowed. The order is at PayPal.", "good");
+      offerOverview(outcome);
     }
   };
   es.onerror = () => { if (runningNow) { addMsg("res-block", "Error", "Lost the connection to the server."); finish(); } };
