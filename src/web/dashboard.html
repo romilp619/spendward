@@ -1020,14 +1020,16 @@ function paint() {
   const fresh = seen ? a.filter(e => !seen.has(e.hash)) : [];
   seen = new Set(a.map(e => e.hash));
 
-  // pipeline counts
-  const allowed = a.filter(e => e.outcome === "ALLOW").length;
+  // pipeline counts. Only what the agent itself asked for: a payment
+  // Spendward collected, or an order you approved, is not another request.
+  const requests = a.filter(e => e.tool !== "pay_order" && !(e.outcome === "ALLOW" && e.violations.length));
+  const allowed = requests.filter(e => e.outcome === "ALLOW").length;
   const reached = a.filter(e => e.tool === "create_order" && e.paypalOrderId && !e.error).length;
   const captured = state.collectedCount ?? 0;
-  count($("v-attempts"), a.length);
-  $("s-attempts").textContent = `request${a.length === 1 ? "" : "s"} made`;
+  count($("v-attempts"), requests.length);
+  $("s-attempts").textContent = `request${requests.length === 1 ? "" : "s"} made`;
   count($("v-passed"), allowed);
-  count($("v-stopped"), a.length - allowed);
+  count($("v-stopped"), requests.length - allowed);
   count($("v-reached"), reached);
   $("s-reached").textContent = `order${reached === 1 ? "" : "s"} reached it${captured ? ` · ${captured} captured` : ""}`;
   fresh.forEach(e => { schedule(e); announce(e); });
@@ -1516,8 +1518,10 @@ function paintChrome() {
     latest, e => e.hash, e => `
     <div class="evrow" style="grid-template-columns:86px 78px 1fr auto">
       <span class="t num">${when(e.at)}</span>${badge(e.outcome)}
-      <span>${esc(e.tool === "create_order" ? `${e.merchant ?? ""}` : e.tool)}${e.amount != null ? ` · <span class="num">${money(e.amount, e.currency)}</span>` : ""}</span>
-      <span class="r">${esc(e.violations.map(v => v.rule).join(", ") || (e.tool === "pay_order" ? "paid" : "within the mandate"))}</span>
+      <span>${esc(e.merchant || ACTION[e.tool] || e.tool)}${e.amount != null ? ` · <span class="num">${money(e.amount, e.currency)}</span>` : ""}</span>
+      <span class="r">${esc(e.tool === "pay_order" ? "paid at PayPal"
+        : e.outcome === "ALLOW" && e.violations.length ? "approved by you"
+        : e.violations.map(v => v.rule).join(", ") || "within the mandate")}</span>
     </div>`);
 }
 
