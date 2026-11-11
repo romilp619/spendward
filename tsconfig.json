@@ -27,5 +27,8 @@
     "src",
     "redteam",
     "test"
+  ],
+  "exclude": [
+    "src/web/insights/ai-adapter.ts"
   ]
 }

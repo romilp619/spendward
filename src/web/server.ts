@@ -44,6 +44,61 @@ const app = new Hono();
 // service is not marked down over a missing route.
 app.get("/healthz", (c) => c.json({ ok: true }));
 
+// --- Insights (AG Studio) -----------------------------------------------------------
+// AG Studio runs in the browser. Its AI agents talk to an LLM through AG's documented
+// Responses-API adapter, compiled here once from TypeScript, and through the proxy below,
+// which holds the key. The proxy only ever calls the configured model, caps every answer, and
+// limits how often it can be used, so a public demo cannot be turned into a free LLM.
+
+let adapterJs: string | null = null;
+app.get("/insights/ai-adapter.js", async (c) => {
+  if (!adapterJs) {
+    const { transform } = await import("esbuild");
+    const src = readFileSync(join(here, "insights", "ai-adapter.ts"), "utf8");
+    adapterJs = (await transform(src, { loader: "ts", format: "esm", target: "es2022" })).code;
+  }
+  return c.body(adapterJs, 200, { "Content-Type": "text/javascript; charset=utf-8", "Cache-Control": "no-cache" });
+});
+
+const AI_MAX_OUTPUT_TOKENS = 8_000;
+const AI_WINDOW_MS = 10 * 60_000;
+const AI_PER_CLIENT = 40;   // calls per client per window; one question is several calls
+const AI_GLOBAL = 150;      // calls per window across everyone
+const aiCalls: { at: number; who: string }[] = [];
+
+app.post("/api/ai/responses", async (c) => {
+  const base = process.env.LLM_BASE_URL, key = process.env.LLM_API_KEY, model = process.env.LLM_MODEL;
+  if (!base || !key || !model) return c.json({ error: { message: "The AI assistant is not configured." } }, 503);
+
+  const now = Date.now();
+  while (aiCalls.length && now - aiCalls[0]!.at > AI_WINDOW_MS) aiCalls.shift();
+  const who = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  if (aiCalls.length >= AI_GLOBAL || aiCalls.filter((x) => x.who === who).length >= AI_PER_CLIENT) {
+    return c.json({ error: { message: "The assistant is busy. Try again in a few minutes." } }, 429);
+  }
+  aiCalls.push({ at: now, who });
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await c.req.json()) as Record<string, unknown>;
+  } catch {
+    return c.json({ error: { message: "Request body must be JSON." } }, 400);
+  }
+  // Whatever the browser asks for, only the configured model runs, with bounded
+  // output. Reasoning settings are dropped: the deployed model takes none.
+  const { reasoning: _reasoning, include: _include, ...rest } = body;
+  const upstream = await fetch(`${base}/responses`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ ...rest, model, max_output_tokens: AI_MAX_OUTPUT_TOKENS }),
+    signal: c.req.raw.signal,
+  });
+  return new Response(upstream.body, {
+    status: upstream.status,
+    headers: { "Content-Type": upstream.headers.get("Content-Type") ?? "application/json", "Cache-Control": "no-store" },
+  });
+});
+
 app.get("/", (c) => c.html(readFileSync(join(here, "dashboard.html"), "utf8")));
 
 app.get("/api/state", (c) => {

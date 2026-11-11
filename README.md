@@ -125,6 +125,10 @@ list after a block.
 - **The rules contain no model.** Whether money moves is a pure function of the
   signed mandate, the request and the ledger. That is deliberate: a payment is
   refused whether the cause was an injection, a hallucination, or a bug.
+- **Ask Spendward**, on the Insights page, answers questions about the decision
+  log and builds charts on request, using AG Studio's Agent Framework. It reads
+  the record; it cannot change a mandate or move money. Its model key stays on
+  the server, behind a rate-limited proxy.
 
 ## Design principles
 
@@ -473,6 +477,8 @@ npm run audit:verify
 | [src/lib/audit.ts](src/lib/audit.ts) | HMAC-chained log, doubles as the spend ledger |
 | [src/mcp/server.ts](src/mcp/server.ts) | MCP server mirroring PayPal's tool names |
 | [src/agent/shopper.ts](src/agent/shopper.ts) | an ordinary, unhardened agent |
+| [src/web/dashboard.html](src/web/dashboard.html) | the dashboard, including the AG Studio Insights report |
+| [src/web/insights/ai-adapter.ts](src/web/insights/ai-adapter.ts) | AG Studio's Responses API adapter, served to the Insights page |
 | [redteam/](redteam/) | attack corpus and scoring harness |
 
 ## Relationship to AP2
