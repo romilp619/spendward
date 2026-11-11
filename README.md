@@ -345,7 +345,7 @@ From the terminal:
 npm run web                  # the dashboard at localhost:3000
 npm run demo                 # the agent through six tasks, fixed catalogue
 npm run demo:live            # the same against Channel3's live catalogue
-npm test                     # 43 tests: rules, keys, payees, listings, periods, chain, wallet; no network
+npm test                     # 44 tests: rules, keys, payees, listings, periods, chain, wallet, mandate store; no network
 ```
 
 To pay at checkout, log in with the **personal** sandbox account PayPal created

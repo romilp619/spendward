@@ -19,7 +19,7 @@ import { principalKey, signMandate, type Mandate } from "../lib/mandate.js";
 import { recordEvent, recentEvents } from "../lib/events.js";
 import { evaluate } from "../lib/policy.js";
 import { revoke, revokedAt } from "../lib/revocations.js";
-import { active, activate, all as allMandates, byId, ledgerFor, save } from "../lib/mandates.js";
+import { active, activate, all as allMandates, byId, ledgerFor, remove as removeMandate, save } from "../lib/mandates.js";
 import { directory, resolvePayee } from "../lib/merchants.js";
 import { placeOrder, recordPayment } from "../lib/checkout.js";
 import { withLockAsync } from "../lib/lock.js";
@@ -334,6 +334,21 @@ app.post("/api/mandates/:id/activate", (c) => {
   if (revokedAt(id)) return c.json({ error: "That mandate is revoked; sign a new one instead." }, 409);
   activate(id);
   return c.json({ id });
+});
+
+// Tidies the list. Only revoked mandates go, and never the selected one (requests
+// are still refused against it), one an approval is waiting on, or the two the
+// Try it catalogues run on (Reset demo restores those). The audit log keeps
+// every decision, with the mandate id it was made under.
+const PRESET_MANDATES = new Set(["mnd_demo_001", "mnd_live_001"]);
+app.post("/api/mandates/clear-revoked", (c) => {
+  const selected = active()?.mandate.id;
+  const waiting = new Set(listApprovals().filter((a) => a.status === "PENDING").map((a) => a.mandateId));
+  const gone = allMandates()
+    .map((s) => s.mandate.id)
+    .filter((id) => revokedAt(id) && id !== selected && !waiting.has(id) && !PRESET_MANDATES.has(id));
+  for (const id of gone) removeMandate(id);
+  return c.json({ removed: gone.length });
 });
 
 // --- Try it ---------------------------------------------------------------------

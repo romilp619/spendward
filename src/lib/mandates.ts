@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dataPath } from "./data.js";
 import { join } from "node:path";
 import type { SignedMandate } from "./mandate.js";
@@ -60,6 +60,13 @@ export function active(): SignedMandate | null {
   } catch {
     return null;
   }
+}
+
+/** Deletes a mandate's file. Never the one selected: requests are checked against it. */
+export function remove(id: string): void {
+  if (!safe(id)) throw new Error(`invalid mandate id: ${id}`);
+  if (active()?.mandate.id === id) throw new Error("the selected mandate cannot be removed");
+  rmSync(join(dir(), `${id}.json`), { force: true });
 }
 
 export function activate(id: string): SignedMandate {
