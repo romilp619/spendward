@@ -162,6 +162,8 @@
   /* A short trail sizes to its rows; AG Grid otherwise reserves room for an overlay. */
   #grid .ag-layout-auto-height .ag-center-cols-viewport,
   #grid .ag-layout-auto-height .ag-center-cols-container { min-height: 0 !important; }
+  /* ...except with no rows to show, when the "nothing yet" message needs the room. */
+  #grid.no-rows .ag-layout-auto-height .ag-center-cols-viewport { min-height: 96px !important; }
 
   /* Tabs */
   .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 22px; overflow-x: auto; scrollbar-width: none; }
@@ -1280,11 +1282,18 @@ grid = agGrid.createGrid($("grid"), {
     REQUIRE_APPROVAL: { background: "var(--approve-bg)" },
   })[p.data.outcome],
   onRowClicked: e => openDetail(e.data),
+  // Nothing to show, whether the log is empty or a search or filter matches
+  // nothing: the message gets room, and AG Grid shows it in both cases.
+  onModelUpdated: e => {
+    const none = e.api.getDisplayedRowCount() === 0;
+    $("grid").classList.toggle("no-rows", none);
+    none ? e.api.showNoRowsOverlay() : e.api.hideOverlay();
+  },
   isExternalFilterPresent: () => decisionFilter !== "all",
   doesExternalFilterPass: n => n.data.outcome === decisionFilter,
   // Without this the investigation panel is mouse-only.
   onCellKeyDown: e => { if (e.event?.key === "Enter" || e.event?.key === " ") openDetail(e.data); },
-  overlayNoRowsTemplate: "No decisions recorded yet. Run an agent to populate this.",
+  overlayNoRowsTemplate: "No decisions to show yet. Run a scenario in Try it, or choose another filter.",
 });
 
 $("q").addEventListener("input", e => grid.setGridOption("quickFilterText", e.target.value));
