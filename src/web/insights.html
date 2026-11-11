@@ -72,7 +72,10 @@ function insightsData() {
   const confirmations = (state.events ?? []).map((e, i) => ({
     id: i + 1, time: e.at, type: e.type, verified: e.verification, summary: e.summary ?? "",
   }));
-  const f = (id, name, format, description) => ({ id, name, format, ...(description ? { description } : {}) });
+  // Money reads "USD 508.00", as on Overview.
+  const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", currencyDisplay: "code" });
+  const f = (id, name, format, description) => ({ id, name, format, ...(description ? { description } : {}),
+    ...(format === "currencyFormat" ? { formatOptions: { format: usd } } : {}) });
   return {
     description: "Spendward sits between an AI shopping agent and PayPal. Every payment the agent attempts is checked against a mandate the user signed; the outcome is Allowed, Held for you (waits for the user's approval) or Blocked. Amounts are USD. When naming a rule such as MANDATE_MAX_AMOUNT, write it in backticks.",
     sources: [
@@ -108,7 +111,9 @@ function insightsData() {
   };
 }
 
-const kpi = (text, value) => ({ type: "value", format: { title: { enabled: true, text } }, dataMapping: { value: [value] } });
+// Text scaling shrinks a long value such as "USD 1,250.00" to fit its tile rather than cutting it off.
+const kpi = (text, value) => ({ type: "value", format: { title: { enabled: true, text }, style: { textScaling: { enabled: true } } },
+  dataMapping: { value: [value] } });
 const INSIGHTS_REPORT = {
   selectedPageId: "overview",
   pages: [{
