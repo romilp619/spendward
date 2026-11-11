@@ -1346,11 +1346,16 @@ const SINCE = { month: "this month: ", week: "this week: ", day: "today: ", none
 function paintMandates() {
   const w = state.wallet;
   const m = state.mandate;
-  $("m-limit").textContent = m ? money(m.maxTransactionAmount, m.currency) : "—";
-  $("m-limit-s").textContent = m ? `per payment · ${m.allowedMerchants.join(", ")}` : "none active";
+  // A revoked mandate stays selected, so every request is refused against it,
+  // and the log says so, until another one is made active.
+  $("m-limit").textContent = !m ? "—" : state.revokedAt ? "Revoked" : money(m.maxTransactionAmount, m.currency);
+  $("m-limit").style.color = m && state.revokedAt ? "var(--block)" : "";
+  $("m-limit-s").textContent = !m ? "none active" : state.revokedAt ? "every request is refused · make another mandate active"
+    : `per payment · ${m.allowedMerchants.join(", ")}`;
   const left = m ? Math.max(0, m.maxTotalAmount - (state.spent ?? 0)) : null;
-  $("m-left").textContent = m ? money(left, m.currency) : "—";
-  $("m-left-s").textContent = m ? `of ${money(m.maxTotalAmount, m.currency)} ${PER[m.budgetPeriod] ?? "in total"}` : "";
+  $("m-left").textContent = m && !state.revokedAt ? money(left, m.currency) : "—";
+  $("m-left-s").textContent = !m ? "" : state.revokedAt ? "nothing can be spent under a revoked mandate"
+    : `of ${money(m.maxTotalAmount, m.currency)} ${PER[m.budgetPeriod] ?? "in total"}`;
   $("m-wallet").textContent = w ? "Connected" : "Not connected";
   $("m-wallet").style.color = w ? "var(--allow)" : "var(--muted)";
   // The address is in the wallet section just below; the card only says what it means.
@@ -1376,8 +1381,10 @@ function paintMandates() {
         <div class="what"><strong>${money(x.maxTransactionAmount, x.currency)}</strong> per payment ·
           <strong>${money(x.maxTotalAmount, x.currency)}</strong> ${PER[x.budgetPeriod] ?? "in total"} ·
           ${esc(x.allowedMerchants.join(", "))}
-          ${x.active ? `<span class="tag on">active</span>` : ""}${x.revokedAt ? `<span class="tag off">revoked</span>` : ""}</div>
-        <div class="meta"><code>${esc(x.id)}</code> · signed ${when(x.issuedAt)} · expires ${new Date(x.expiresAt).toLocaleDateString()}</div>
+          ${x.revokedAt ? `<span class="tag off">revoked</span>` : x.active ? `<span class="tag on">active</span>` : ""}</div>
+        <div class="meta"><code>${esc(x.id)}</code> · signed ${when(x.issuedAt)} ·
+          ${x.revokedAt ? `revoked ${when(x.revokedAt)}${x.active ? " · still selected, so every request is refused" : ""}`
+            : `expires ${new Date(x.expiresAt).toLocaleDateString()}`}</div>
       </div>
       <div>${x.revokedAt ? ""
         : x.active ? `<button class="danger" data-revoke="1">Revoke</button>`
