@@ -608,9 +608,12 @@
   }
 
   /* Insights: AG Studio fills the panel; it brings its own chrome. */
-  #studio { height: calc(100vh - 190px); min-height: 640px; border-radius: var(--radius);
+  #studio { height: calc(100vh - 230px); min-height: 640px; border-radius: var(--radius);
     overflow: hidden; border: 1px solid var(--line); background: var(--panel-solid); }
   #studio:empty { display: none; }
+  .credit { margin: 10px 2px 0; text-align: right; font-size: 12px; color: var(--muted); }
+  .credit a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .credit a:hover { color: var(--ink); }
 </style>
 </head>
 <body>
@@ -749,6 +752,7 @@
     <p class="empty" id="ins-empty" hidden><span>Nothing to chart yet. Open <button class="link" data-goto="try">Try it</button> and run a scenario.</span></p>
     <p class="empty" id="ins-loading"><span>Loading the report…</span></p>
     <div id="studio" aria-label="Spendward report"></div>
+    <p class="credit" id="ins-credit" hidden>Report and assistant powered by <a href="https://www.ag-grid.com/studio/" target="_blank" rel="noopener">AG Studio</a> from AG Grid</p>
   </div>
 
   <div class="panel" id="p-mandates" role="tabpanel" aria-labelledby="t-mandates" hidden>
@@ -1736,6 +1740,7 @@ async function openInsights() {
           ],
         }),
       }, { modules: [agStudio.AgStudioAiModule] });
+      $("ins-credit").hidden = false;
     } catch (err) {
       $("ins-empty").hidden = false;
       $("ins-empty").querySelector("span").textContent = "The report could not load. Check your connection and open Insights again.";
