@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Spendward Insights</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&display=swap" rel="stylesheet">
 <style>
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
   #studio { height: 100%; }
@@ -42,6 +45,9 @@ function insightsData() {
   // collected, or the record of you approving an order, is not a new request.
   const requests = a.filter(e => e.tool !== "pay_order" && !(e.outcome === "ALLOW" && e.violations.length));
   const approved = new Set(a.filter(e => e.outcome === "ALLOW" && e.violations.length && e.paypalOrderId).map(e => e.paypalOrderId));
+  // The rules a prompt injection trips: money redirected to another account, an
+  // order that does not match the listing, or a subscription slipped in.
+  const ATTACK = new Set(["UNAUTHORIZED_RECIPIENT", "LISTING_MISMATCH", "SUBSCRIPTION_NOT_ALLOWED"]);
   const rank = { ALLOW: 0, REQUIRE_APPROVAL: 1, BLOCK: 2 };
   // Sorted by outcome so the donut always lists Allowed, Held, Blocked in that
   // order, matching the series order of the per-day chart.
@@ -50,6 +56,8 @@ function insightsData() {
     amount: e.amount, outcome: OUTCOME[e.outcome] ?? e.outcome,
     allowed: e.outcome === "ALLOW" ? 1 : 0, held: e.outcome === "REQUIRE_APPROVAL" ? 1 : 0, blocked: e.outcome === "BLOCK" ? 1 : 0,
     reached: e.tool === "create_order" && e.paypalOrderId && !e.error ? 1 : 0,
+    attack: e.outcome === "BLOCK" && e.violations.some(v => ATTACK.has(v.rule)) ? 1 : 0,
+    blockedAmount: e.outcome === "BLOCK" ? e.amount ?? 0 : 0,
     task: e.sourceContext ?? "",
   }));
   const rules = requests.flatMap(e => e.violations.map((v, i) => ({
@@ -59,6 +67,7 @@ function insightsData() {
   const payments = a.filter(e => e.tool === "pay_order" && e.outcome === "ALLOW" && !e.error).map(e => ({
     id: e.seq, time: e.at, day: day(e.at), shop: shop(e.merchant), payee: e.payeeAccount ?? "—",
     amount: e.amount ?? 0, order: e.paypalOrderId ?? "", approved: approved.has(e.paypalOrderId) ? "Approved by you" : "Within the mandate",
+    byYou: approved.has(e.paypalOrderId) ? 1 : 0,
   }));
   const confirmations = (state.events ?? []).map((e, i) => ({
     id: i + 1, time: e.at, type: e.type, verified: e.verification, summary: e.summary ?? "",
@@ -73,6 +82,8 @@ function insightsData() {
         f("outcome", "Outcome", "textFormat", "Allowed, Held for you, or Blocked"),
         f("allowed", "Allowed", "integerFormat", "1 if allowed"), f("held", "Held", "integerFormat", "1 if held for the user's approval"),
         f("blocked", "Blocked", "integerFormat", "1 if blocked"), f("reached", "Reached PayPal", "integerFormat", "1 if an order was created at PayPal"),
+        f("attack", "Attack stopped", "integerFormat", "1 if blocked by a rule a prompt injection trips: UNAUTHORIZED_RECIPIENT, LISTING_MISMATCH or SUBSCRIPTION_NOT_ALLOWED"),
+        f("blockedAmount", "Amount blocked", "currencyFormat", "The amount asked for, if the request was blocked"),
         f("task", "Task", "textFormat", "What the agent said it was doing"),
       ] },
       { id: "rules", name: "Rules triggered", description: "One row per mandate rule a decision broke. Prompt-injection attacks show up as UNAUTHORIZED_RECIPIENT, LISTING_MISMATCH or SUBSCRIPTION_NOT_ALLOWED.", data: rules, fields: [
@@ -84,6 +95,7 @@ function insightsData() {
         f("id", "Payment", "integerFormat"), f("time", "Time", "dateTimeFormat"), f("day", "Day", "textFormat"),
         f("shop", "Shop", "textFormat"), f("payee", "Paid to (PayPal account)", "textFormat"), f("amount", "Amount", "currencyFormat"),
         f("order", "PayPal order", "textFormat"), f("approved", "How", "textFormat"),
+        f("byYou", "Approved by you", "integerFormat", "1 if you approved this payment after it was held"),
       ] },
       { id: "confirmations", name: "PayPal confirmations", description: "Webhooks PayPal sent, with their signature verification result.", data: confirmations, fields: [
         f("id", "Confirmation", "integerFormat"), f("time", "Time", "dateTimeFormat"), f("type", "Event", "textFormat"),
@@ -102,11 +114,12 @@ const INSIGHTS_REPORT = {
   pages: [{
     id: "overview",
     widgets: {
-      k1: kpi("Requests", { id: "decisions.id", aggregation: "countd" }),
-      k2: kpi("Allowed", { id: "decisions.allowed", aggregation: "sum" }),
-      k3: kpi("Held for you", { id: "decisions.held", aggregation: "sum" }),
-      k4: kpi("Blocked", { id: "decisions.blocked", aggregation: "sum" }),
-      k5: kpi("Paid via PayPal", { id: "payments.amount", aggregation: "sum" }),
+      // Activity already counts requests by outcome; these are the figures it does not show.
+      k1: kpi("Paid via PayPal", { id: "payments.amount", aggregation: "sum" }),
+      k2: kpi("Money blocked", { id: "decisions.blockedAmount", aggregation: "sum" }),
+      k3: kpi("Attacks stopped", { id: "decisions.attack", aggregation: "sum" }),
+      k4: kpi("Approved by you", { id: "payments.byYou", aggregation: "sum" }),
+      k5: kpi("Shops paid", { id: "payments.shop", aggregation: "countd" }),
       k6: kpi("Rules triggered", { id: "rules.id", aggregation: "countd" }),
       outcomes: { type: "donut-chart", format: { title: { enabled: true, text: "What Spendward decided" } },
         dataMapping: { categoryKey: [{ id: "decisions.outcome" }], valueKey: [{ id: "decisions.id", aggregation: "countd" }] } },
