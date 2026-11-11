@@ -121,8 +121,9 @@ const INSIGHTS_REPORT = {
       k4: kpi("Approved by you", { id: "payments.byYou", aggregation: "sum" }),
       k5: kpi("Shops paid", { id: "payments.shop", aggregation: "countd" }),
       k6: kpi("Rules triggered", { id: "rules.id", aggregation: "countd" }),
-      outcomes: { type: "donut-chart", format: { title: { enabled: true, text: "What Spendward decided" } },
-        dataMapping: { categoryKey: [{ id: "decisions.outcome" }], valueKey: [{ id: "decisions.id", aggregation: "countd" }] } },
+      // Dollars, not counts: Overview already counts requests by outcome.
+      outcomes: { type: "donut-chart", format: { title: { enabled: true, text: "Amount asked, by outcome" } },
+        dataMapping: { categoryKey: [{ id: "decisions.outcome" }], valueKey: [{ id: "decisions.amount", aggregation: "sum" }] } },
       perDay: { type: "column-chart-stacked", format: { title: { enabled: true, text: "Requests per day" },
         style: { theme: { common: { legend: { enabled: true, position: "bottom" } } } } },
         // One series per outcome, in a fixed order, so each keeps the colour it has in the donut.
