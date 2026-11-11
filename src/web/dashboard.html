@@ -1379,7 +1379,9 @@ function paintMandates() {
           ${x.active ? `<span class="tag on">active</span>` : ""}${x.revokedAt ? `<span class="tag off">revoked</span>` : ""}</div>
         <div class="meta"><code>${esc(x.id)}</code> · signed ${when(x.issuedAt)} · expires ${new Date(x.expiresAt).toLocaleDateString()}</div>
       </div>
-      <div>${!x.active && !x.revokedAt ? `<button data-activate="${esc(x.id)}">Make active</button>` : ""}</div>
+      <div>${x.revokedAt ? ""
+        : x.active ? `<button class="danger" data-revoke="1">Revoke</button>`
+        : `<button data-activate="${esc(x.id)}">Make active</button>`}</div>
     </div>`);
 }
 
@@ -1397,6 +1399,9 @@ $("p-mandates").addEventListener("click", async e => {
     await fetch("/api/wallet/disconnect", { method: "POST" });
     toast("Wallet disconnected. Orders will wait for checkout again.");
     await load();
+  } else if (t.dataset?.revoke) {
+    // The same confirmation as on Overview: revoking is final.
+    openDialog($("confirm-revoke"));
   } else if (t.dataset?.activate) {
     t.disabled = true;
     const r = await fetch(`/api/mandates/${encodeURIComponent(t.dataset.activate)}/activate`, { method: "POST" });
