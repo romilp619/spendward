@@ -336,19 +336,21 @@ app.post("/api/mandates/:id/activate", (c) => {
   return c.json({ id });
 });
 
-// Tidies the list. Only revoked mandates go, and never the selected one (requests
-// are still refused against it), one an approval is waiting on, or the two the
-// Try it catalogues run on (Reset demo restores those). The audit log keeps
-// every decision, with the mandate id it was made under.
+// Deletes a mandate you created. Not the selected one (requests are checked
+// against it: make another active first), not one an approval is waiting on,
+// and not the two Try it runs on. The audit log keeps every decision, with the
+// mandate id it was made under.
 const PRESET_MANDATES = new Set(["mnd_demo_001", "mnd_live_001"]);
-app.post("/api/mandates/clear-revoked", (c) => {
-  const selected = active()?.mandate.id;
-  const waiting = new Set(listApprovals().filter((a) => a.status === "PENDING").map((a) => a.mandateId));
-  const gone = allMandates()
-    .map((s) => s.mandate.id)
-    .filter((id) => revokedAt(id) && id !== selected && !waiting.has(id) && !PRESET_MANDATES.has(id));
-  for (const id of gone) removeMandate(id);
-  return c.json({ removed: gone.length });
+app.delete("/api/mandates/:id", (c) => {
+  const id = c.req.param("id");
+  if (!byId(id)) return c.json({ error: "not found" }, 404);
+  if (PRESET_MANDATES.has(id)) return c.json({ error: "Try it runs on this mandate, so it stays." }, 409);
+  if (active()?.mandate.id === id) return c.json({ error: "Make another mandate active first; this one is selected." }, 409);
+  if (listApprovals().some((a) => a.status === "PENDING" && a.mandateId === id)) {
+    return c.json({ error: "An approval is waiting on this mandate. Decide it first." }, 409);
+  }
+  removeMandate(id);
+  return c.json({ removed: id });
 });
 
 // --- Try it ---------------------------------------------------------------------

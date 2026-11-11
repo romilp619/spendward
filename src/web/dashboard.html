@@ -222,6 +222,8 @@
           padding: 12px 0; border-bottom: 1px solid var(--line); }
   .list > div:last-child .mrow { border-bottom: 0; }
   .mrow .what { font-size: 14px; } .mrow .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .mbtns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .mbtns:empty { display: none; }
   .tag { display: inline-block; font-size: 11.5px; font-weight: 650; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; }
   .tag.on { color: var(--allow); background: var(--allow-bg); } .tag.off { color: var(--block); background: var(--block-bg); }
   .walletline { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;
@@ -770,7 +772,7 @@
     </section>
 
     <section aria-labelledby="mandates-h" id="mandates-section">
-      <h2 id="mandates-h">Signed mandates <button class="link" id="m-clear" hidden>Clear revoked</button></h2>
+      <h2 id="mandates-h">Signed mandates</h2>
       <div class="pending" id="mandates" style="padding-top:4px"></div>
     </section>
   </div>
@@ -1343,6 +1345,8 @@ $("pending").addEventListener("click", async e => {
 const PER = { month: "a month", week: "a week", day: "a day", none: "in total" };
 const SINCE = { month: "this month: ", week: "this week: ", day: "today: ", none: "" };
 
+/** The mandates Try it runs on; the server keeps them, so no Delete is offered. */
+const PRESETS = ["mnd_demo_001", "mnd_live_001"];
 function paintMandates() {
   const w = state.wallet;
   const m = state.mandate;
@@ -1361,11 +1365,6 @@ function paintMandates() {
   // The address is in the wallet section just below; the card only says what it means.
   $("m-wallet-s").textContent = w ? "pays with no checkout page" : "orders wait for checkout";
   const all = state.mandates ?? [];
-  // Mirrors what the server will remove (it decides; this only hides the link
-  // when there is nothing to clear).
-  const clearable = all.filter(x => x.revokedAt && !x.active && !["mnd_demo_001", "mnd_live_001"].includes(x.id)).length;
-  $("m-clear").hidden = clearable === 0;
-  if (!$("m-clear")._armed) $("m-clear").textContent = `Clear revoked (${clearable})`;
   $("m-count").textContent = String(all.length);
   $("m-count-s").textContent = `${all.filter(x => x.revokedAt).length} revoked`;
   const wb = $("wallet"), wk = JSON.stringify(w);
@@ -1391,9 +1390,9 @@ function paintMandates() {
           ${x.revokedAt ? `revoked ${when(x.revokedAt)}${x.active ? " · still selected, so every request is refused" : ""}`
             : `expires ${new Date(x.expiresAt).toLocaleDateString()}`}</div>
       </div>
-      <div>${x.revokedAt ? ""
-        : x.active ? `<button class="danger" data-revoke="1">Revoke</button>`
-        : `<button data-activate="${esc(x.id)}">Make active</button>`}</div>
+      <div class="mbtns">${x.active && !x.revokedAt ? `<button class="danger" data-revoke="1">Revoke</button>` : ""}
+        ${!x.active && !x.revokedAt ? `<button data-activate="${esc(x.id)}">Make active</button>` : ""}
+        ${!x.active && !PRESETS.includes(x.id) ? `<button class="ghost" data-delete="${esc(x.id)}">Delete</button>` : ""}</div>
     </div>`);
 }
 
@@ -1411,19 +1410,19 @@ $("p-mandates").addEventListener("click", async e => {
     await fetch("/api/wallet/disconnect", { method: "POST" });
     toast("Wallet disconnected. Orders will wait for checkout again.");
     await load();
-  } else if (t.id === "m-clear") {
-    // Two clicks, in the page: removing mandates cannot be undone.
+  } else if (t.dataset?.delete) {
+    // Two clicks, in the page: deleting cannot be undone.
     if (!t._armed) {
       t._armed = true;
-      t.textContent = "Click again to remove them";
-      setTimeout(() => { t._armed = false; paintMandates(); }, 4000);
+      t.textContent = "Confirm delete";
+      setTimeout(() => { if (t.isConnected) { t._armed = false; t.textContent = "Delete"; } }, 4000);
       return;
     }
-    t._armed = false;
-    const r = await fetch("/api/mandates/clear-revoked", { method: "POST" });
+    t.disabled = true;
+    const r = await fetch(`/api/mandates/${encodeURIComponent(t.dataset.delete)}`, { method: "DELETE" });
     const b = await r.json().catch(() => ({}));
-    r.ok ? toast(`Removed ${b.removed} revoked mandate${b.removed === 1 ? "" : "s"}. Every decision stays in the log.`, "good")
-         : toast("Could not clear revoked mandates.", "bad");
+    r.ok ? toast(`Mandate ${t.dataset.delete} deleted. Its decisions stay in the log.`, "good")
+         : toast(b.error ?? "Could not delete the mandate.", "bad");
     await load();
   } else if (t.dataset?.revoke) {
     // The same confirmation as on Overview: revoking is final.
