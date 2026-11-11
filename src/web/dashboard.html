@@ -717,9 +717,9 @@
     </div>
 
     <div class="cards stats">
-      <div class="card"><h2><span>Total decisions</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></h2><div class="big num" id="a-total">0</div><div class="sub">all time</div></div>
-      <div class="card"><h2><span>Allowed</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></h2><div class="big num" id="a-allowed">0</div><div class="sub" id="a-allowed-s">within the mandate or approved</div></div>
-      <div class="card"><h2><span>Held for you</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></h2><div class="big num" id="a-held">0</div><div class="sub">escalated for approval</div></div>
+      <div class="card"><h2><span>Agent requests</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></h2><div class="big num" id="a-total">0</div><div class="sub" id="a-total-s">all time</div></div>
+      <div class="card"><h2><span>Allowed</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></h2><div class="big num" id="a-allowed">0</div><div class="sub" >within the mandate</div></div>
+      <div class="card"><h2><span>Held for you</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></h2><div class="big num" id="a-held">0</div><div class="sub" id="a-held-s">escalated for approval</div></div>
       <div class="card"><h2><span>Blocked</span><svg class="cico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></h2><div class="big num" id="a-blocked">0</div><div class="sub">PayPal never called</div></div>
     </div>
 
@@ -1538,15 +1538,19 @@ function paintChrome() {
   $("tc-overview").textContent = waiting || "";
   $("tc-activity").textContent = (state.audit ?? []).length || "";
 
-  // Activity stats. Payments are the pay_order rows; decisions are everything else.
+  // Activity stats, counted the way Overview and Insights count them: each
+  // request the agent made, once. Your approval of a held order is not a
+  // second request, and a payment is not a request at all.
   const a = state.audit ?? [];
-  const decisions = a.filter(e => e.tool !== "pay_order");
+  const requests = a.filter(e => e.tool !== "pay_order" && !(e.outcome === "ALLOW" && e.violations.length));
+  const approvedByYou = a.filter(e => e.tool !== "pay_order" && e.outcome === "ALLOW" && e.violations.length).length;
   const paid = a.filter(e => e.tool === "pay_order" && e.outcome === "ALLOW" && !e.error).length;
-  count($("a-total"), decisions.length);
-  count($("a-allowed"), decisions.filter(e => e.outcome === "ALLOW").length);
-  count($("a-held"), decisions.filter(e => e.outcome === "REQUIRE_APPROVAL").length);
-  count($("a-blocked"), decisions.filter(e => e.outcome === "BLOCK").length);
-  $("a-allowed-s").textContent = paid ? `${paid} paid at PayPal` : "within the mandate or approved";
+  count($("a-total"), requests.length);
+  count($("a-allowed"), requests.filter(e => e.outcome === "ALLOW").length);
+  count($("a-held"), requests.filter(e => e.outcome === "REQUIRE_APPROVAL").length);
+  count($("a-blocked"), requests.filter(e => e.outcome === "BLOCK").length);
+  $("a-total-s").textContent = paid ? `${paid} paid at PayPal` : "all time";
+  $("a-held-s").textContent = approvedByYou ? `${approvedByYou} approved by you` : "escalated for approval";
   const latest = [...(state.audit ?? [])].reverse().slice(0, 5);
   const box = $("recent");
   let empty = box.querySelector(".empty");
