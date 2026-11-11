@@ -874,7 +874,7 @@ const columns = [
     valueFormatter: p => p.value == null ? "—" : money(p.value, p.data.currency) },
   { headerName: "Decision", field: "outcome", width: 112,
     cellRenderer: p => badge(p.value), cellStyle: { display: "flex", alignItems: "center" } },
-  { headerName: "Paid to", field: "payeeAccount", width: 140, cellClass: "tool", valueFormatter: p => p.value ?? "—" },
+  { headerName: "Pays", field: "payeeAccount", width: 140, cellClass: "tool", valueFormatter: p => p.value ?? "—" },
   // Long rule lists wrap onto a second line rather than run off the table.
   { headerName: "Rules triggered", flex: 1, minWidth: 220, autoHeight: true,
     cellRenderer: p => {
@@ -1180,7 +1180,7 @@ function openDetail(e) {
     <dl class="row"><dt>Requested</dt><dd>${money(e.amount, e.currency)} · quantity ${e.quantity ?? "—"}</dd></dl>
     <dl class="row"><dt>Merchant</dt><dd>${esc(e.merchant)}</dd></dl>
     <dl class="row"><dt>Payee, as the agent wrote it</dt><dd>${esc(e.recipient)}</dd></dl>
-    <dl class="row"><dt>PayPal account paid</dt><dd>${e.payeeAccount ? `<code>${esc(e.payeeAccount)}</code>` : "—"}</dd></dl>
+    <dl class="row"><dt>PayPal account it pays</dt><dd>${e.payeeAccount ? `<code>${esc(e.payeeAccount)}</code>` : "—"}</dd></dl>
     <dl class="row"><dt>Instruction source</dt><dd>${esc(e.sourceContext) || "—"}</dd></dl>
     <dl class="row"><dt>PayPal call</dt><dd>${
       e.error ? "<strong>attempted, rejected by PayPal</strong><br><code>" + esc(e.error) + "</code>"
