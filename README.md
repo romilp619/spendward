@@ -274,22 +274,9 @@ live run. Both are one click away in the dashboard's **Try it** tab.
 
 ## How it works
 
-```
-  you ── "headphones from Best Buy, under $150" ──▶ AI drafts ──▶ you sign (Ed25519)
-                                                                   │
-                                            mandate + public key only
-                                                                   ▼
-  agent ──── MCP tool call ────────────────────────────────▶  Spendward
-  (untrusted)                                                      │
-                                    ├── verify the mandate with your public key
-                                    ├── 14 deterministic rules, no model
-                                    ├── resolve the payee from the mandate, not the agent
-                                    ├── append to the HMAC-chained audit log
-                                    │
-                       ALLOW ───────┴──▶ PayPal Orders v2, payee set, paid from your saved wallet
-                       BLOCK ──────────▶ (no call made)
-              REQUIRE_APPROVAL ────────▶ you decide, seeing which PayPal account would be paid
-```
+<p align="center">
+  <img src="docs/how-it-works.svg" width="100%" alt="How Spendward works: an AI agent finds products through Channel3 and calls PayPal's tools through Spendward. Spendward verifies the signed mandate, runs 14 deterministic rules, binds the payee from the mandate and records the decision. Allowed orders go to PayPal Orders v2 and are paid from the saved Vault wallet; orders that need approval wait for you; blocked orders never reach PayPal. PayPal's verified webhooks are shown in Activity.">
+</p>
 
 Rules are evaluated in order, signature first — an unverified mandate makes every
 later rule meaningless. A violation is marked *escalatable* or not: one
