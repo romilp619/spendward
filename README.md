@@ -60,6 +60,11 @@ made, and you check and sign it:
 }
 ```
 
+<p align="center">
+  <img src="docs/mandate.gif" width="100%" alt="Creating a mandate in the dashboard: the request is typed in plain English, Draft with AI fills in USD 150 per payment, USD 400 a month, bestbuy.com and headphones and lists its assumptions, and after signing it becomes the active mandate">
+</p>
+<p align="center"><sub>Describe the limits, let the AI draft them, check its assumptions, sign. <a href="docs/mandate.mp4">Watch in full quality</a>.</sub></p>
+
 Spendward runs as an **MCP server that mirrors PayPal's tool names**, so any MCP
 client points at Spendward instead of PayPal and nothing about the agent changes.
 Every call is evaluated against the mandate before PayPal is contacted.
