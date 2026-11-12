@@ -426,14 +426,13 @@ A representative live run:
 <details>
 <summary><b>Webhooks, Render deploy and MCP clients</b></summary>
 
-**Webhooks.** PayPal can confirm each payment independently. Spendward verifies
-each one's signature and shows it in **Activity**, and captures an approved
-checkout automatically. Locally, run `npm run tunnel` in a second terminal (it
-prints a public address and writes it to `PUBLIC_URL`). Add a webhook in
-**Apps & Credentials → your app → Webhooks** pointing at
-`https://<that address>/paypal/webhook` with **All Events**, put its ID in
-`PAYPAL_WEBHOOK_ID`, and restart. Afterwards `npm run tunnel` re-points the
-webhook for you each time.
+**Webhooks (optional).** PayPal can confirm each payment independently.
+Spendward verifies each one's signature and shows it in **Activity**, and
+captures an approved checkout automatically. Locally, start the dashboard with
+`npm run tunnel` instead of `npm run web`. It opens a public Cloudflare
+address, creates this machine's own PayPal webhook the first time (saved as
+`PAYPAL_WEBHOOK_ID_LOCAL`), points it at that address, and starts the
+dashboard. A deployed site's webhook (`PAYPAL_WEBHOOK_ID`) is never changed.
 
 **Deploy on Render.** `render.yaml` describes the service: one web service with
 a 1 GB persistent disk. Run `npm run render:env` to write the settings, then in
@@ -472,7 +471,7 @@ npm run agent -- "Buy me the Sony headphones from TechStore"
 npm run reset                # clear the record; keeps wallet and mandates
 npm run redteam              # the benchmark
 npm run audit:verify         # check the hash chain
-npm run tunnel               # public URL for PayPal webhooks
+npm run tunnel               # the dashboard with a public address and PayPal webhooks
 npm test                     # 45 tests, no network
 ```
 

@@ -246,24 +246,34 @@ captures an approved checkout automatically.
 
 PayPal needs a public address to send these to.
 
-**Locally**, start a tunnel in a second terminal and leave it running:
+**Locally**, start the dashboard with this instead of `npm run web`:
 
 ```bash
 npm run tunnel
 ```
 
-It prints a public `https://….trycloudflare.com` address and writes it to
-`PUBLIC_URL` in `.env`.
+```
+starting a tunnel to port 3000...
+public address: https://declaration-broke-fixes-dock.trycloudflare.com
+created local webhook 8PR76855PG2740054 -> https://declaration-broke-fixes-dock.trycloudflare.com/paypal/webhook (saved to .env)
 
-The first time, add the webhook in **Apps & Credentials → your app → Webhooks
-→ Add Webhook**:
+dashboard: http://localhost:3000   (public: https://declaration-broke-fixes-dock.trycloudflare.com)
+Ctrl+C stops the dashboard and the tunnel.
+```
 
-- **Webhook URL:** the tunnel address followed by `/paypal/webhook`
-- **Events:** All Events
+It does everything for you:
 
-Copy the **Webhook ID** into `.env` as `PAYPAL_WEBHOOK_ID` and restart
-`npm run web`. A tunnel's address changes every time it starts; from then on,
-`npm run tunnel` points the webhook at the new address for you.
+1. opens a public Cloudflare address to your machine;
+2. the first time, creates a PayPal webhook for this machine and saves its ID
+   in `.env` as `PAYPAL_WEBHOOK_ID_LOCAL`; after that, points the same webhook
+   at the new address (a tunnel's address changes each time);
+3. starts the dashboard using that address and webhook.
+
+Use the dashboard at **http://localhost:3000** as usual. **Ctrl+C** stops both.
+
+If you also deploy (Part 6), that site keeps its own webhook in
+`PAYPAL_WEBHOOK_ID`. `npm run tunnel` never changes it, so running locally
+cannot break the deployed site.
 
 ---
 
@@ -283,8 +293,10 @@ npm run render:env        # writes render.env, the settings to paste into Render
 npm run webhook -- https://your-service.onrender.com
 ```
 
-This updates the webhook in `PAYPAL_WEBHOOK_ID`, so create the webhook in
-Part 5 first.
+This points the webhook in `PAYPAL_WEBHOOK_ID` at your Render address. Create
+that webhook first in **Apps & Credentials → your app → Webhooks → Add
+Webhook** (any URL, **All Events**), and put its ID in `.env` as
+`PAYPAL_WEBHOOK_ID` before running `npm run render:env`.
 
 ---
 
@@ -294,6 +306,7 @@ Part 5 first.
 | --- | --- |
 | `could not reach PayPal to find your sandbox business account` | Check the Client ID and Secret in `.env`, and that they are **Sandbox** credentials. |
 | Connecting the wallet says the app is not allowed | Save payment methods is not on yet: see step 1.4. A new app with the box ticked works at once. |
+| `WARNING: PUBLIC_URL … is unreachable` | `.env` points at an old tunnel. Set `PUBLIC_URL=http://localhost:3000`, or start with `npm run tunnel`. |
 | **Model busy, retrying** in the transcript | Your model provider is rate-limiting. Spendward retries on its own. |
 | Every purchase is refused with `MERCHANT_NOT_ALLOWED` | The catalogue in **Try it** does not match the active mandate. Demo shop uses `mnd_demo_001`; live shopping uses `mnd_live_001`. Switch in **Mandates**. |
 | Every purchase is refused with `MANDATE_REVOKED` | The active mandate was revoked. Make another one active in **Mandates**, or use **Reset demo**. |
