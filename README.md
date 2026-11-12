@@ -11,6 +11,10 @@
 
 ---
 
+**Try it live: [spendward.onrender.com](https://spendward.onrender.com)**. Open
+**Try it**, pick a scenario, and watch a real AI agent shop while Spendward
+decides. Everything runs in the PayPal sandbox, so no real money moves.
+
 ## The problem
 
 PayPal's agent toolkit exposes **46 tools** to any connected agent — including
@@ -114,6 +118,32 @@ list after a block.
   escalation re-runs the rules first, so a request that has since gone over
   budget, expired or been revoked cannot be approved. The browser tab notifies
   you when something needs you.
+
+## The dashboard
+
+| Page | What it is for |
+| --- | --- |
+| **Overview** | What is happening now: requests, what Spendward decided, what reached PayPal, the mandate, this month's spend, and anything waiting for your approval |
+| **Activity** | The record: every decision in the tamper-evident log, searchable and exportable as CSV, beside PayPal's own verified webhooks |
+| **Insights** | Money and patterns, as an AG Studio report: what was paid and blocked, attacks stopped, rules triggered, where the money went. **Ask Spendward** answers questions about it |
+| **Mandates** | Draft a mandate from plain English, sign it, switch between mandates, revoke or delete them, and connect a PayPal wallet |
+| **Try it** | Run the real agent on everyday purchases and on prompt-injection attacks, and see each step |
+
+![The Insights page: amounts paid and blocked, attacks stopped, rules that stopped a payment, and where the money went, built with AG Studio](docs/insights.png)
+
+### The sandbox shops
+
+The live demo's shops are paid into two PayPal sandbox business accounts, so you
+can see that the money for each shop goes to that shop's own account:
+
+| Account | Shops | PayPal merchant ID |
+| --- | --- | --- |
+| Sandbox shop A | TechStore, Best Buy | `N44HAL6FEZTZN` |
+| Sandbox shop B | AudioWorld, Macy's | `VJBAWYGFKXP7Q` |
+
+The buyer is a PayPal sandbox personal account whose wallet is already
+connected, so allowed purchases are paid with no checkout page. For your own
+deployment, `npm run setup` creates this from your own sandbox accounts.
 
 ## Where the AI is
 
@@ -278,7 +308,7 @@ purchase asks permission but a redirected payment never does.
 ### Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/spendward.git
+git clone https://github.com/romilp619/spendward.git
 cd spendward
 npm install
 ```
@@ -309,6 +339,7 @@ Fill in `.env`:
 | `LLM_BASE_URL` | any OpenAI-compatible endpoint |
 | `LLM_API_KEY` | your provider key |
 | `LLM_MODEL` | e.g. `deepseek-v4.1-flash:free` |
+| `CHANNEL3_API_KEY` | optional: [Channel3](https://trychannel3.com/developers), for live shopping at real retailers |
 
 PayPal sandbox accounts outside the US may reject non-USD currencies. PayPal's
 own agent toolkit hard-codes `currencyCode: z.enum(['USD'])`, so USD is the only
