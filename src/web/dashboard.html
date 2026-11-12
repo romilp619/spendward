@@ -1476,7 +1476,7 @@ $("m-draft").addEventListener("click", async e => {
   e.target.disabled = false; e.target.textContent = "Draft with AI";
   if (!r.ok) return showErr(b.error ?? "The draft failed.");
   fillForm(b.draft);
-  const notes = [...(b.assumptions ?? []), ...(b.unknownMerchants?.length ? [`No PayPal account is on record for ${b.unknownMerchants.join(", ")}; remove it or add it to merchants.json before signing.`] : [])];
+  const notes = [...(b.missing ?? []), ...(b.assumptions ?? []), ...(b.unknownMerchants?.length ? [`No PayPal account is on record for ${b.unknownMerchants.join(", ")}; remove it or add it to merchants.json before signing.`] : [])];
   const ul = $("m-assume");
   ul.innerHTML = notes.map(n => `<li>${esc(n)}</li>`).join("");
   ul.hidden = notes.length === 0;

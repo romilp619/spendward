@@ -24,12 +24,51 @@ export const DraftSchema = z.object({
 });
 export type Draft = z.infer<typeof DraftSchema>;
 
+/** What the model may hand back: the same fields, but shops may be missing
+ *  (the person need not name one) and numbers may arrive as text. */
+const ModelDraftSchema = DraftSchema.extend({
+  maxTransactionAmount: z.coerce.number().positive().max(100_000),
+  approvalCeiling: z.coerce.number().positive().max(100_000),
+  maxTotalAmount: z.coerce.number().positive().max(1_000_000),
+  maxQuantity: z.coerce.number().int().min(1).max(100),
+  expiresInDays: z.coerce.number().int().min(1).max(365),
+  allowedMerchants: z.array(z.string().min(1).max(80)).max(20),
+});
+
+/** The form's own labels, so a problem names the field the person can see. */
+const LABELS: Record<string, string> = {
+  maxTransactionAmount: "Per payment", approvalCeiling: "Ask me up to", maxTotalAmount: "Budget",
+  budgetPeriod: "Budget resets", maxQuantity: "Items per order", allowedMerchants: "Shops",
+  allowedCategories: "Kinds of thing", allowSubscriptions: "Allow subscriptions", expiresInDays: "Expires in, days",
+};
+
+/** Plain sentences for validation problems, never raw validator output. */
+export function explainIssues(issues: readonly z.core.$ZodIssue[]): string {
+  return issues.map((i) => {
+    const field = String(i.path[0] ?? "");
+    const label = LABELS[field] ?? field;
+    if (field === "allowedMerchants" && i.code === "too_small") return "Shops: name at least one shop the agent may buy from.";
+    switch (i.code) {
+      case "too_small": {
+        const min = "minimum" in i ? String(i.minimum) : "1";
+        return "inclusive" in i && i.inclusive === false ? `${label}: must be more than ${min}.` : `${label}: must be at least ${min}.`;
+      }
+      case "too_big": return `${label}: can be at most ${"maximum" in i ? String(i.maximum) : "the limit"}.`;
+      case "invalid_type": return `${label}: missing or not a number.`;
+      case "invalid_value": return `${label}: pick one of the options.`;
+      default: return `${label}: ${i.message}.`;
+    }
+  }).join(" ");
+}
+
 export interface DraftResult {
   draft: Draft;
   /** Each choice the model made that the principal did not state outright. */
   assumptions: string[];
   /** Requested merchants with no PayPal account on record; they cannot be signed in. */
   unknownMerchants: string[];
+  /** What the person still has to fill in before the draft can be signed. */
+  missing: string[];
 }
 
 export async function draftMandate(text: string): Promise<DraftResult> {
@@ -47,6 +86,8 @@ export async function draftMandate(text: string): Promise<DraftResult> {
           "set it to maxTransactionAmount * 1.2 rounded to a whole number. maxTotalAmount is the budget per budgetPeriod. " +
           "Default to the strictest reasonable reading: subscriptions false, maxQuantity 1, expiresInDays 30, unless stated. " +
           `Merchants must be written as the merchant ids the system knows when one matches: ${known}. ` +
+          "If the person names no shop, return an empty allowedMerchants and say nothing about shops in assumptions: " +
+          "an empty list means no shop is allowed yet, never any shop. " +
           "Categories are matched as whole words inside a shop's own category name, so prefer short general words: " +
           "\"headphones\" matches \"In-Ear Headphones\" and \"Over-Ear Headphones\"; leave the list empty if the person did not limit what kind of thing. " +
           "Every value you choose that the person did not state explicitly must be listed in assumptions. " +
@@ -58,7 +99,11 @@ export async function draftMandate(text: string): Promise<DraftResult> {
   );
 
   const raw = JSON.parse((reply.content ?? "{}").replace(/^```(?:json)?|```$/g, "").trim()) as Record<string, unknown>;
-  const draft = DraftSchema.parse(raw);
+  const parsed = ModelDraftSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new Error(`The AI's draft was incomplete. ${explainIssues(parsed.error.issues)} Try saying it another way, or fill in the form yourself.`);
+  }
+  const draft = parsed.data;
   const assumptions = Array.isArray(raw.assumptions) ? raw.assumptions.map(String).slice(0, 12) : [];
 
   // Clamp rather than trust: the ceiling can never sit below the limit it extends.
@@ -67,5 +112,13 @@ export async function draftMandate(text: string): Promise<DraftResult> {
     assumptions.push("Raised the approval ceiling to the per-payment limit; it cannot be lower.");
   }
   const dir = directory();
-  return { draft, assumptions, unknownMerchants: draft.allowedMerchants.filter((m) => !dir[m]) };
+  // No shop named: say so rather than guess. Granting shops the person never
+  // mentioned would be inventing a permission.
+  if (!draft.allowedMerchants.length) {
+    // The model sometimes reads an empty list as "any shop". It is not; drop that claim.
+    for (let k = assumptions.length - 1; k >= 0; k--) if (/merchant|shop|store|retailer/i.test(assumptions[k]!)) assumptions.splice(k, 1);
+  }
+  const missing = draft.allowedMerchants.length ? [] :
+    [`You didn't name a shop. Add at least one before signing, for example ${Object.keys(dir).slice(0, 2).join(" or ") || "bestbuy.com"}.`];
+  return { draft, assumptions, unknownMerchants: draft.allowedMerchants.filter((m) => !dir[m]), missing };
 }

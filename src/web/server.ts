@@ -24,7 +24,7 @@ import { directory, resolvePayee } from "../lib/merchants.js";
 import { placeOrder, recordPayment } from "../lib/checkout.js";
 import { withLockAsync } from "../lib/lock.js";
 import { wallet, saveWallet, forgetWallet } from "../lib/wallet.js";
-import { draftMandate, DraftSchema } from "../lib/drafter.js";
+import { draftMandate, DraftSchema, explainIssues } from "../lib/drafter.js";
 import { FIXED, LIVE } from "../demo/tasks.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -289,14 +289,16 @@ app.post("/api/mandates/draft", async (c) => {
   try {
     return c.json(await draftMandate(text));
   } catch (err) {
-    return c.json({ error: `Could not draft a mandate: ${(err instanceof Error ? err.message : String(err)).slice(0, 200)}` }, 502);
+    const msg = err instanceof Error ? err.message : String(err);
+    // Validation problems are already plain sentences; anything else is the model or the network.
+    return c.json({ error: msg.startsWith("The AI's draft") ? msg : "The AI could not draft that just now. Try again, or fill in the form yourself." }, 502);
   }
 });
 
 app.post("/api/mandates", async (c) => {
   const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
   const parsed = DraftSchema.safeParse(body);
-  if (!parsed.success) return c.json({ error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, 400);
+  if (!parsed.success) return c.json({ error: explainIssues(parsed.error.issues) }, 400);
   const d = parsed.data;
   if (d.approvalCeiling < d.maxTransactionAmount) return c.json({ error: "The approval ceiling cannot be below the per-payment limit." }, 400);
   const dir = directory();
