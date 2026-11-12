@@ -172,6 +172,24 @@ deployment, `npm run setup` creates this from your own sandbox accounts.
   the record; it cannot change a mandate or move money. Its model key stays on
   the server, behind a rate-limited proxy.
 
+## Tools used
+
+| Tool | What it does in Spendward |
+| --- | --- |
+| **PayPal Orders v2 API** | Every allowed purchase is a real sandbox order. Spendward writes the payee (`payee.merchant_id`) itself, from the mandate, never from the agent. |
+| **PayPal Vault (v3 payment tokens)** | The saved wallet: the principal approves once, then allowed payments are charged with no checkout page. Disconnecting deletes the token. |
+| **PayPal Webhooks and webhook signature verification** | PayPal's own confirmations, each verified with `verify-webhook-signature` and shown beside Spendward's decisions. A verified `CHECKOUT.ORDER.APPROVED` is captured automatically. |
+| **PayPal agent toolkit tool names** | Spendward's MCP server exposes the same tool names, so an existing PayPal-connected agent points at Spendward unchanged. |
+| **DeepSeek V4.1 Flash, on Microsoft Azure** (OpenAI-compatible API) | The live site's one model, used three ways: the shopping agent (tool calling), the mandate drafter (plain English to a structured draft, with every assumption listed), and the model behind Ask Spendward. It never decides whether money moves. |
+| **AG Studio, from AG Grid** | The Insights report: KPI tiles, charts and tables over the decision log, themed to match the dashboard. Its **Agent Framework** powers Ask Spendward, through a server proxy that keeps the model key on the server and rate-limits use. |
+| **Channel3 API** | Live product search across real retailers. The listings it returns are Spendward's source of truth: every order must match one (`LISTING_MISMATCH`). |
+| **Model Context Protocol SDK** | The MCP server the agent talks to. |
+| **Render** | Hosts the live site: one web service with a persistent disk for the audit log, mandates and wallet. |
+| **AG Grid Community, GSAP** | The Activity decision log table, and the dashboard's motion. |
+
+Any OpenAI-compatible model works in your own deployment: set `LLM_BASE_URL`,
+`LLM_API_KEY` and `LLM_MODEL`. The benchmark below compares five.
+
 ## Design principles
 
 - **Enforce, don't detect.** Spotting prompt injection is unreliable by nature,
