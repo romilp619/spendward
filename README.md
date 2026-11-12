@@ -158,10 +158,15 @@ tool calling**, and optionally a **Channel3** key for live shopping.
 2. **Testing Tools → Sandbox Accounts**: PayPal has made you a **Business**
    account (the shop) and a **Personal** account (the buyer). Note the
    personal account's email and password; you will log in with it in step 5.
+
+   ![PayPal's Sandbox test accounts page: business accounts (the shops) and a personal account (the buyer)](docs/setup/paypal-accounts.png)
 3. **Apps & Credentials → Create App**: any name, type **Merchant**.
 4. On the app's page, under **Features**, tick **Save payment methods** and
    save. This lets the agent pay from a saved wallet.
-5. Copy the app's **Client ID** and **Secret**.
+5. Copy the app's **Client ID** and **Secret** from **Apps & Credentials**.
+   Keep them private.
+
+   ![PayPal's REST API apps list: the app with its Client ID and hidden Secret, each with a copy button](docs/setup/paypal-app.png)
 
 ### Step 2: Get the code
 

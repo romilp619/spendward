@@ -38,6 +38,8 @@ Open **Testing Tools → Sandbox Accounts**. PayPal creates two for you:
 | `…@business.example.com` | Business | The shop that gets paid |
 | `…@personal.example.com` | Personal | The buyer: you log in with it to pay or to connect the wallet |
 
+![PayPal's Sandbox test accounts page: business accounts (the shops) and a personal account (the buyer)](setup/paypal-accounts.png)
+
 Click the **personal** account, then **View/Edit account**, and note its email
 and password. You will need them in step 4.2.
 
@@ -69,8 +71,10 @@ checkout page.
 
 ### 1.5 Copy the credentials
 
-On the same page, copy the **Client ID** and the **Secret**. They go in `.env`
-in step 3.1. Keep the Secret private.
+Back in **Apps & Credentials**, copy your app's **Client ID** and **Secret**
+with the copy buttons. They go in `.env` in step 3.1. Keep both private.
+
+![PayPal's REST API apps list: the app with its Client ID and hidden Secret, each with a copy button](setup/paypal-app.png)
 
 ---
 
