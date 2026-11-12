@@ -239,9 +239,40 @@ says **Connected**, and allowed payments are paid with no checkout page.
 
 Then open **Try it** and click a scenario, as in [Try it in 2 minutes](#try-it-in-2-minutes).
 
-Without a connected wallet, allowed orders wait in **Overview → Needs you**:
-**Open PayPal checkout**, pay with the personal sandbox account, then
-**Capture payment**.
+### Step 6: Paying at checkout (only if you skip the wallet)
+
+Without a connected wallet, an allowed order waits in **Overview → Needs you**.
+
+![Needs you: an allowed order waiting for the buyer, with Open PayPal checkout and Capture payment](docs/setup/05-needs-you-checkout.png)
+
+1. Click **Open PayPal checkout**. Log in with **your personal sandbox
+   account** (from step 1) and click **Complete Purchase**. The payment
+   methods are PayPal's sandbox test ones; no real money moves.
+
+   ![PayPal's sandbox checkout for the order, with the sandbox account's test payment methods and Complete Purchase](docs/setup/paypal-checkout.png)
+
+2. PayPal sends you back to Spendward. Click **Capture payment** and the money
+   moves to your sandbox business account.
+
+   ![Back on Spendward after paying: the order is approved at PayPal and ready to capture](docs/setup/paypal-return.png)
+
+### Which command: `npm run web` or `npm run tunnel`?
+
+Everything here uses **your own** PayPal sandbox and keys: your business
+account is paid, you pay as your personal account, and nothing touches anyone
+else's PayPal app or the live demo.
+
+| | `npm run web` (use this) | `npm run tunnel` (optional) |
+| --- | --- | --- |
+| **What it starts** | The dashboard at http://localhost:3000 | The same dashboard, plus a public Cloudflare address to your machine |
+| **First run** | Sets itself up (signing key, shops, demo mandates) | Run `npm run web` once first |
+| **After paying at checkout** | You click **Capture payment** | Captured automatically when PayPal confirms the payment |
+| **PayPal's own confirmations** in Activity | Not shown | Shown, each signature-verified |
+| **In your PayPal app** | Nothing changes | Creates one webhook for your machine the first time, then reuses it |
+
+`npm run web` is all you need: every feature works with it. `npm run tunnel` only
+adds PayPal's webhooks, which need a public address to reach your laptop. Run
+**one** at a time (both use port 3000); **Ctrl+C** stops either.
 
 ```bash
 npm test     # 45 tests, no network needed

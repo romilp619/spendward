@@ -213,11 +213,20 @@ Spendward chose, not the agent:
 ### 4.4 Pay, or approve
 
 **Without a wallet connected**, an allowed order waits in **Overview → Needs
-you**. Click **Open PayPal checkout**, pay with the personal sandbox account,
-then come back and click **Capture payment**. With webhooks set up (Part 5),
-capture happens on its own.
+you**:
 
 ![Needs you: an allowed order waiting for the buyer, with Open PayPal checkout and Capture payment](setup/05-needs-you-checkout.png)
+
+Click **Open PayPal checkout**, log in with your **personal** sandbox account
+from step 1.2, and click **Complete Purchase**:
+
+![PayPal's sandbox checkout for the order, with the sandbox account's test payment methods and Complete Purchase](setup/paypal-checkout.png)
+
+PayPal sends you back to Spendward. Click **Capture payment**:
+
+![Back on Spendward after paying: the order is approved at PayPal and ready to capture](setup/paypal-return.png)
+
+With webhooks (Part 5, `npm run tunnel`), capture happens on its own.
 
 **A little over the limit** is held for you instead. The card says exactly
 which PayPal account would be paid. **Approve once** places and pays it;
