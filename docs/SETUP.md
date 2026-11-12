@@ -47,7 +47,7 @@ and password. You will need them in step 4.2.
 > Best Buy and for Macy's go to different places? Click **Create account**,
 > choose **Business**, and repeat once per shop. Each has an **Account ID**
 > (13 characters, for example `N44HAL6FEZTZN`). You will put these in
-> `merchants.json` in step 3.3. Optional: by default every shop pays your one
+> `merchants.json` in step 4.1. Optional: by default every shop pays your one
 > business account.
 
 ### 1.3 Create an app
@@ -72,7 +72,7 @@ checkout page.
 ### 1.5 Copy the credentials
 
 Back in **Apps & Credentials**, copy your app's **Client ID** and **Secret**
-with the copy buttons. They go in `.env` in step 3.1. Keep both private.
+with the copy buttons. They go in `.env` in Part 3. Keep both private.
 
 ![PayPal's REST API apps list: the app with its Client ID and hidden Secret, each with a copy button](setup/paypal-app.png)
 
@@ -92,15 +92,29 @@ added 100 packages in 1s
 
 ---
 
-## Part 3: Configure
+## Part 3: Add your keys
 
-### 3.1 Fill in `.env`
+Run the one command you will use from now on:
 
 ```bash
-cp .env.example .env
+npm run web
 ```
 
-Open `.env` and fill in:
+The first time, it creates `.env` and lists the keys only you can provide:
+
+```
+Created .env from .env.example.
+
+Almost there. Fill these in .env, then run the same command again:
+
+  PAYPAL_CLIENT_ID       PayPal developer dashboard > Apps & Credentials (Sandbox) > your app
+  PAYPAL_CLIENT_SECRET   same page as the Client ID
+  LLM_BASE_URL           your model provider's OpenAI-compatible URL, e.g. https://api.openai.com/v1
+  LLM_API_KEY            your model provider's API key
+  LLM_MODEL              a model with tool calling
+```
+
+Open `.env` and fill them in:
 
 | Variable | Value |
 | --- | --- |
@@ -111,57 +125,7 @@ Open `.env` and fill in:
 | `LLM_MODEL` | A model with tool calling, for example `gpt-4.1-mini` |
 | `CHANNEL3_API_KEY` | Optional, for live shopping |
 
-Leave `PUBLIC_URL=http://localhost:3000` as it is for now.
-
-### 3.2 Run setup once
-
-```bash
-npm run setup
-```
-
-You should see:
-
-```
-generated an Ed25519 mandate key pair
-generated an audit chain key
-wrote merchants.json: every demo shop pays your sandbox business account VJBAWYGFKXP7Q
-  for separate shops, create one sandbox business account each and put their IDs here
-signed mnd_demo_001
-signed mnd_live_001
-active mandate: mnd_demo_001
-
-setup done. Next: npm run web, then npm run demo
-```
-
-The account ID on the third line is your own sandbox business account's.
-Setup has:
-
-- made your **mandate signing key**, which only you hold, and the key that
-  protects the audit log, and added both to `.env`
-- found your sandbox business account and written `merchants.json`, which says
-  which PayPal account each demo shop pays
-- signed two demo mandates and made one active
-
-Setup is safe to run again: it never replaces a key or a `merchants.json` you
-already have.
-
-### 3.3 Optional: one PayPal account per shop
-
-If you made extra business accounts in step 1.2, open `merchants.json` and put
-each shop's Account ID in its `payee`, then sign the demo mandates again:
-
-```json
-{
-  "TechStore":   { "name": "TechStore (sandbox shop A)",  "payee": "N44HAL6FEZTZN" },
-  "AudioWorld":  { "name": "AudioWorld (sandbox shop B)", "payee": "VJBAWYGFKXP7Q" },
-  "bestbuy.com": { "name": "Best Buy (sandbox shop A)",   "payee": "N44HAL6FEZTZN" },
-  "macys.com":   { "name": "Macy's (sandbox shop B)",     "payee": "VJBAWYGFKXP7Q" }
-}
-```
-
-```bash
-npm run mint
-```
+Leave `PUBLIC_URL=http://localhost:3000` as it is.
 
 ---
 
@@ -173,9 +137,45 @@ npm run mint
 npm run web
 ```
 
+The first time, it sets itself up, then starts:
+
 ```
+First run: setting up (signing key, shops, demo mandates)...
+generated an Ed25519 mandate key pair
+generated an audit chain key
+wrote merchants.json: every demo shop pays your sandbox business account VJBAWYGFKXP7Q
+  for separate shops, create one sandbox business account each and put their IDs here
+signed mnd_demo_001
+signed mnd_live_001
+active mandate: mnd_demo_001
+
+setup done.
 Spendward dashboard on http://localhost:3000
 ```
+
+The account ID will be your own sandbox business account's. That first run:
+
+- made your **mandate signing key**, which only you hold, and the key that
+  protects the audit log, and added both to `.env`
+- found your sandbox business account and wrote `merchants.json`, which says
+  which PayPal account each demo shop pays
+- signed two demo mandates and made one active
+
+Every later `npm run web` starts straight away and changes nothing: your keys,
+mandates and the mandate you chose stay as they are.
+
+> **Optional: one PayPal account per shop.** If you made extra business
+> accounts in step 1.2, put each shop's Account ID in `merchants.json`, then
+> run `npm run mint` to sign the demo mandates again:
+>
+> ```json
+> {
+>   "TechStore":   { "name": "TechStore (sandbox shop A)",  "payee": "N44HAL6FEZTZN" },
+>   "AudioWorld":  { "name": "AudioWorld (sandbox shop B)", "payee": "VJBAWYGFKXP7Q" },
+>   "bestbuy.com": { "name": "Best Buy (sandbox shop A)",   "payee": "N44HAL6FEZTZN" },
+>   "macys.com":   { "name": "Macy's (sandbox shop B)",     "payee": "VJBAWYGFKXP7Q" }
+> }
+> ```
 
 Open **http://localhost:3000**. A fresh install starts empty, with the demo
 mandate in force: USD 250 per payment, USD 1000 a month, at TechStore.

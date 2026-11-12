@@ -89,4 +89,4 @@ if (existsSync("merchants.json")) {
   activate("mnd_demo_001");
   console.log("active mandate: mnd_demo_001");
 }
-console.log("\nsetup done. Next: npm run web, then npm run demo");
+console.log(process.env.SPENDWARD_FIRST_RUN ? "\nsetup done." : "\nsetup done. Next: npm run web, then npm run demo");

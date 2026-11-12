@@ -174,10 +174,23 @@ tool calling**, and optionally a **Channel3** key for live shopping.
 git clone https://github.com/romilp619/spendward.git
 cd spendward
 npm install
-cp .env.example .env
 ```
 
-### Step 3: Add your keys to `.env`
+### Step 3: Add your keys
+
+Run `npm run web` once. It creates `.env` and tells you which keys to fill in:
+
+```
+Created .env from .env.example.
+
+Almost there. Fill these in .env, then run the same command again:
+
+  PAYPAL_CLIENT_ID       PayPal developer dashboard > Apps & Credentials (Sandbox) > your app
+  PAYPAL_CLIENT_SECRET   same page as the Client ID
+  LLM_BASE_URL           your model provider's OpenAI-compatible URL, e.g. https://api.openai.com/v1
+  LLM_API_KEY            your model provider's API key
+  LLM_MODEL              a model with tool calling
+```
 
 | Variable | Value |
 | --- | --- |
@@ -188,15 +201,17 @@ cp .env.example .env
 | `LLM_MODEL` | A model with tool calling |
 | `CHANNEL3_API_KEY` | Optional, for live shopping |
 
-### Step 4: Run setup once
+### Step 4: Start it: one command
 
 ```bash
-npm run setup
+npm run web
 ```
 
-You should see:
+That is the only command you need. The first time, it sets itself up and then
+starts:
 
 ```
+First run: setting up (signing key, shops, demo mandates)...
 generated an Ed25519 mandate key pair
 generated an audit chain key
 wrote merchants.json: every demo shop pays your sandbox business account VJBAWYGFKXP7Q
@@ -205,17 +220,12 @@ signed mnd_demo_001
 signed mnd_live_001
 active mandate: mnd_demo_001
 
-setup done. Next: npm run web, then npm run demo
+setup done.
+Spendward dashboard on http://localhost:3000
 ```
 
-(The account ID will be your own.) This made your signing key, found your
-sandbox shop account and signed two demo mandates.
-
-### Step 5: Start it
-
-```bash
-npm run web
-```
+(The account ID will be your own.) Every later `npm run web` starts straight
+away and changes nothing.
 
 Open **http://localhost:3000**.
 
@@ -269,7 +279,7 @@ you can see each shop's money go to that shop's own account:
 | Sandbox shop B | AudioWorld, Macy's | `VJBAWYGFKXP7Q` |
 
 The buyer is a PayPal sandbox personal account whose wallet is already
-connected. In your own copy, `npm run setup` sets this up from your own sandbox
+connected. In your own copy, the first `npm run web` sets this up from your own sandbox
 accounts, and `merchants.json` says which account each shop pays.
 
 </details>

@@ -40,7 +40,7 @@ const mandatesDir = process.env.SPENDWARD_MANDATES ?? "mandates";
 const hasMandates = existsSync(mandatesDir) && readdirSync(mandatesDir).some((f) => f.endsWith(".json") && f !== "active.json");
 if (!env.MANDATE_PRIVATE_KEY || !existsSync(process.env.SPENDWARD_MERCHANTS ?? "merchants.json") || !hasMandates) {
   console.log("First run: setting up (signing key, shops, demo mandates)...\n");
-  const r = spawnSync(process.execPath, ["--env-file=.env", "--import", "tsx", "src/cli/setup.ts"], { stdio: "inherit" });
+  const r = spawnSync(process.execPath, ["--env-file=.env", "--import", "tsx", "src/cli/setup.ts"], { stdio: "inherit", env: { ...process.env, SPENDWARD_FIRST_RUN: "1" } });
   if (r.status !== 0) process.exit(r.status ?? 1);
   console.log("");
 }
