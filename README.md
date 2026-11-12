@@ -18,7 +18,8 @@ decides. Everything runs in the PayPal sandbox, so no real money moves.
 > **Note for judges:** the live site needs no setup and no API keys. Use it
 > directly. Running Spendward yourself, locally or on your own server, needs
 > your own keys: a PayPal sandbox app, an OpenAI-compatible LLM endpoint, and
-> optionally Channel3 for live shopping. See [Quickstart](#quickstart).
+> optionally Channel3 for live shopping. Follow the
+> [step-by-step setup guide, with screenshots](docs/SETUP.md).
 
 ## The problem
 
