@@ -12,8 +12,9 @@
 ### ▶ Live demo: **[spendward.onrender.com](https://spendward.onrender.com)**
 
 > **Note for judges:** the live site needs no setup, no login and no API keys.
-> Open it and go to **Try it**. Everything runs in the PayPal sandbox, so no
-> real money moves. To run your own copy you need your own keys; the steps are
+> Open it and go to **Try it**. The PayPal sandbox wallet is **already
+> connected**, so you never need to log in to PayPal. Everything runs in the
+> PayPal sandbox, so no real money moves. To run your own copy you need your own keys; the steps are
 > in [Run it yourself](#run-it-yourself) below.
 
 ---
@@ -48,7 +49,9 @@ building agent checkout on PayPal.
 
 All on the live site, **[spendward.onrender.com](https://spendward.onrender.com)**.
 
-**1. Open Try it.** Each card is a real task for a real AI agent.
+**1. Open Try it.** Each card is a real task for a real AI agent. A run takes
+15 to 60 seconds while the agent thinks; the transcript shows each step as it
+happens, and **Go to Overview** at the end takes you to the result.
 
 ![The Try it page: everyday purchases in the first row, prompt-injection attacks in the second](docs/setup/03-try-it.png)
 
@@ -71,7 +74,8 @@ Spendward refuses, before PayPal hears of it.
 
 **5. Open Activity and Insights.** Every decision is in a tamper-evident log,
 next to PayPal's own verified confirmations. **Insights** shows where the money
-went and what was stopped; **Ask Spendward** answers questions about it.
+went and what was stopped; **Ask Spendward** answers questions about it
+(click one of its suggested questions; an answer takes about a minute).
 
 ![The Insights page: paid, blocked, attacks stopped, rules triggered and where the money went](docs/insights.png)
 
