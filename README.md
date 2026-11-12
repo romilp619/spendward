@@ -60,6 +60,8 @@ made, and you check and sign it:
 }
 ```
 
+https://github.com/user-attachments/assets/c2aef43f-af84-4cb1-bd73-854f18af89ed
+
 <p align="center">
   <img src="docs/mandate.gif" width="100%" alt="Creating a mandate in the dashboard: the request is typed in plain English, Draft with AI fills in USD 150 per payment, USD 400 a month, bestbuy.com and headphones and lists its assumptions, and after signing it becomes the active mandate">
 </p>
