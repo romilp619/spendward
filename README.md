@@ -15,6 +15,11 @@
 **Try it**, pick a scenario, and watch a real AI agent shop while Spendward
 decides. Everything runs in the PayPal sandbox, so no real money moves.
 
+> **Note for judges:** the live site needs no setup and no API keys. Use it
+> directly. Running Spendward yourself, locally or on your own server, needs
+> your own keys: a PayPal sandbox app, an OpenAI-compatible LLM endpoint, and
+> optionally Channel3 for live shopping. See [Quickstart](#quickstart).
+
 ## The problem
 
 PayPal's agent toolkit exposes **46 tools** to any connected agent — including
@@ -294,6 +299,9 @@ purchase asks permission but a redirected payment never does.
 ## Quickstart
 
 ### Prerequisites
+
+To just see it working, use the [live site](https://spendward.onrender.com):
+no keys needed. To run your own copy, you need your own:
 
 - Node 20 or later
 - A [PayPal Developer](https://developer.paypal.com) account (free, sandbox only)
