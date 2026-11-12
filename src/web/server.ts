@@ -178,7 +178,11 @@ async function approve(c: Context) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     record({ agent: pending.agent, tool: "create_order", decision: { outcome: "ALLOW", violations: pending.violations, mandateId: pending.mandateId }, request: pending.request, paypalOrderId: null, error: message.slice(0, 300) });
-    return c.json({ error: `PayPal refused the order: ${message.slice(0, 200)}` }, 502);
+    // PayPal's own words stay in the log; the person gets a sentence.
+    const why = /PERMISSION_DENIED|NOT_AUTHORIZED/.test(message) ? "PayPal did not allow this app to place the order. Check the app's credentials in .env."
+      : /PAYEE_ACCOUNT/.test(message) ? "PayPal does not recognise the shop's account. Check merchants.json."
+      : "PayPal could not place the order just now. Try Approve once again in a moment.";
+    return c.json({ error: `${why} Nothing was paid.` }, 502);
   }
 
   // The approval is itself a spend event. Without this the cumulative cap never
@@ -197,7 +201,7 @@ async function approve(c: Context) {
     recordPayment({ agent: pending.agent, mandateId: pending.mandateId, request: pending.request, orderId: order.id, payee: order.payee });
     markCaptured(pending.id);
   }
-  return c.json({ ...decided, paid: order.captured, payeeName: order.payeeName });
+  return c.json({ ...decided, paid: order.captured, payeeName: order.payeeName, walletRejected: order.walletRejected });
 }
 
 /**

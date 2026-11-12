@@ -244,7 +244,9 @@ server.registerTool(
       (o) =>
         o.captured
           ? `Order ${o.id} paid (${o.status}) from the user's saved PayPal wallet, to ${o.payeeName}. Nothing more to do.`
-          : `Order ${o.id} created (${o.status}), payable to ${o.payeeName}.\nThe user approves it at: ${o.approveUrl ?? "n/a"}`,
+          : `Order ${o.id} created (${o.status}), payable to ${o.payeeName}.` +
+            (o.walletRejected ? " The user's saved PayPal wallet is no longer valid, so it was not charged; tell the user to reconnect it in the dashboard." : "") +
+            `\nThe user approves it at: ${o.approveUrl ?? "n/a"}`,
     );
   },
 );

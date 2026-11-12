@@ -882,6 +882,9 @@ const ACTION = { create_order: "Create order", pay_order: "Pay order", get_order
                  create_refund: "Refund", cancel_subscription: "Cancel subscription" };
 const esc   = s => String(s ?? "").replace(/[&<>"]/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
 
+/** A decision's badge. Spendward allowing an order PayPal then refused is not
+ *  a payment, so that row says so instead of "allowed". */
+const badgeOf = e => e.error ? `<span class="badge block">PayPal refused</span>` : badge(e.outcome);
 const badge = o => o === "ALLOW" ? `<span class="badge allow">allowed</span>`
                : o === "BLOCK"   ? `<span class="badge block">blocked</span>`
                : `<span class="badge approval">approval</span>`;
@@ -897,13 +900,13 @@ const columns = [
   { headerName: "Amount", field: "amount", width: 124, type: "rightAligned",
     cellStyle: { fontVariantNumeric: "tabular-nums" },
     valueFormatter: p => p.value == null ? "—" : money(p.value, p.data.currency) },
-  { headerName: "Decision", field: "outcome", width: 112,
-    cellRenderer: p => badge(p.value), cellStyle: { display: "flex", alignItems: "center" } },
+  { headerName: "Decision", field: "outcome", width: 136,
+    cellRenderer: p => badgeOf(p.data), cellStyle: { display: "flex", alignItems: "center" } },
   { headerName: "Pays", field: "payeeAccount", width: 140, cellClass: "tool", valueFormatter: p => p.value ?? "—" },
   // Long rule lists wrap onto a second line rather than run off the table.
   { headerName: "Rules triggered", flex: 1, minWidth: 220, autoHeight: true,
     cellRenderer: p => {
-      if (p.data.error) return `<span class="rules"><span>allowed by Spendward, rejected by PayPal</span></span>`;
+      if (p.data.error) return `<span class="rules"><span>allowed by Spendward, refused by PayPal, nothing paid</span></span>`;
       const rules = p.data.violations.map(v => `<code class="rule">${esc(v.rule)}</code>`).join("");
       if (!rules) return `<span class="rules"><span class="muted">—</span></span>`;
       return `<span class="rules">${rules}${p.data.outcome === "ALLOW" ? `<span class="muted">approved by you</span>` : ""}</span>`;
@@ -912,7 +915,7 @@ const columns = [
     // the bare rule name there reads as a contradiction.
     valueGetter: p => {
       const rules = p.data.violations.map(v => v.rule).join(", ");
-      if (p.data.error) return "allowed by Spendward, rejected by PayPal";
+      if (p.data.error) return "allowed by Spendward, refused by PayPal, nothing paid";
       if (!rules) return "—";
       return p.data.outcome === "ALLOW" ? `${rules} · approved by you` : rules;
     } },
@@ -1277,7 +1280,7 @@ grid = agGrid.createGrid($("grid"), {
   // the background (say, behind PayPal's approval window) can stall half-way,
   // leaving a row drawn over the header. New rows still flash once.
   animateRows: false,
-  getRowStyle: p => ({
+  getRowStyle: p => p.data.error ? { background: "var(--block-bg)" } : ({
     ALLOW: { background: "var(--allow-bg)" },
     BLOCK: { background: "var(--block-bg)" },
     REQUIRE_APPROVAL: { background: "var(--approve-bg)" },
@@ -1337,7 +1340,9 @@ $("pending").addEventListener("click", async e => {
   const body = await res.json().catch(() => ({}));
   e.target.disabled = false;
   if (!res.ok) toast(body.error ?? `${action} failed`, "bad");
-  else if (action === "approve") toast(body.paid ? `Approved once and paid to ${body.payeeName} from your saved wallet.` : "Approved once. The order is at PayPal, waiting for the buyer.", "good");
+  else if (action === "approve") toast(body.paid ? `Approved once and paid to ${body.payeeName} from your saved wallet.`
+    : body.walletRejected ? "Approved once. Your saved PayPal wallet is no longer valid, so the order waits at PayPal checkout. Reconnect the wallet in Mandates."
+    : "Approved once. The order is at PayPal, waiting for the buyer.", body.walletRejected ? "" : "good");
   else if (action === "reject") toast("Rejected. Nothing was sent to PayPal.");
   else toast(`Payment captured: ${body.status}.`, "good");
   await load();
@@ -1576,10 +1581,11 @@ function paintChrome() {
   empty.hidden = latest.length > 0;
   reconcile(box.querySelector(".list") ?? box.appendChild(Object.assign(document.createElement("div"), { className: "list" })),
     latest, e => e.hash, e => `
-    <div class="evrow" style="grid-template-columns:86px 78px 1fr auto">
-      <span class="t num">${when(e.at)}</span>${badge(e.outcome)}
+    <div class="evrow" style="grid-template-columns:86px 112px 1fr auto">
+      <span class="t num">${when(e.at)}</span>${badgeOf(e)}
       <span>${esc(e.merchant || ACTION[e.tool] || e.tool)}${e.amount != null ? ` · <span class="num">${money(e.amount, e.currency)}</span>` : ""}</span>
-      <span class="r">${esc(e.tool === "pay_order" ? "paid at PayPal"
+      <span class="r">${esc(e.error ? "PayPal refused it; nothing was paid"
+        : e.tool === "pay_order" ? "paid at PayPal"
         : e.outcome === "ALLOW" && e.violations.length ? "approved by you"
         : e.violations.map(v => v.rule).join(", ") || "within the mandate")}</span>
     </div>`);
