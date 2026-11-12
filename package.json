@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "setup": "tsx --env-file=.env src/cli/setup.ts",
-    "web": "tsx --env-file=.env src/web/server.ts",
+    "web": "tsx src/cli/first-run.ts && tsx --env-file=.env src/web/server.ts",
     "demo": "./scripts/reset.sh && npm run mint --silent && SPENDWARD_PLANTED=1 SPENDWARD_UNATTENDED=1 npm run demo:agent --silent",
     "demo:live": "./scripts/reset.sh && npm run mint:live --silent && SPENDWARD_CATALOG=channel3 SPENDWARD_PLANTED=1 SPENDWARD_UNATTENDED=1 npm run demo:agent --silent",
     "mint": "tsx --env-file=.env src/cli/mint-mandate.ts",
