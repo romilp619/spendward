@@ -316,6 +316,10 @@ purchase asks permission but a redirected payment never does.
 
 ## Quickstart
 
+> **Step by step, with screenshots:** [docs/SETUP.md](docs/SETUP.md) walks
+> through PayPal setup, install, connecting the wallet and running your first
+> scenario.
+
 ### Prerequisites
 
 To just see it working, use the [live site](https://spendward.onrender.com):
